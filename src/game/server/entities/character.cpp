@@ -46,7 +46,7 @@ CCharacter::CCharacter(CGameWorld *pWorld)
 	m_ProximityRadius = ms_PhysSize;
 	m_Health = 0;
 	m_Armor = 0;
-	mem_zero(&gstats, sizeof(gstats));
+	//mem_zero(&gstats, sizeof(gstats));
 }
 
 void CCharacter::Reset()
@@ -441,7 +441,7 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_RIFLE:
 		{
-			gstats.shots++;
+			m_pPlayer->gstats.shots++;
 			new CLaser(GameWorld(), m_Pos, Direction, GameServer()->Tuning()->m_LaserReach, m_pPlayer->GetCID());
 			GameServer()->CreateSound(m_Pos, SOUND_RIFLE_FIRE);
 		} break;
@@ -728,13 +728,13 @@ void CCharacter::ResetInput()
 
 void CCharacter::Tick()
 {
-	if (++gstats.tick_count >= 100000) {
+	if (++m_pPlayer->gstats.tick_count >= 100000) {
 		double vel_cur = sqrt((m_Core.m_Vel.x * m_Core.m_Vel.x) + 
 					(m_Core.m_Vel.y * m_Core.m_Vel.y));
-		gstats.avg_vel = (vel_cur + (gstats.avg_vel * gstats.num_samples)) / 
-					(gstats.num_samples + 1);
-		gstats.num_samples++;
-		gstats.tick_count = 0;
+		m_pPlayer->gstats.avg_vel = (vel_cur + (m_pPlayer->gstats.avg_vel * 
+			m_pPlayer->gstats.num_samples)) / (m_pPlayer->gstats.num_samples + 1);
+		m_pPlayer->gstats.num_samples++;
+		m_pPlayer->gstats.tick_count = 0;
 	}
 	if(m_pPlayer->m_ForceBalanced)
 	{

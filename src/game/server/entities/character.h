@@ -16,15 +16,6 @@ enum
 	WEAPON_WORLD = -1, // death tiles etc
 };
 
-struct tee_stats {
-		int spree, spree_max, multi, multis[6];
-		int kills, kills_wrong, kills_x2;
-		int lastkilltime, frozeby, deaths, steals, suicides;
-		int shots, freezes, frozen, hammers, hammered, teamhooks;
-		double avg_vel;
-		int num_samples, tick_count;
-	};
-
 class CCharacter : public CEntity
 {
 	MACRO_ALLOC_POOL_ID()
@@ -88,7 +79,7 @@ public:
 	int LastHammeredBy() { return m_HammeredBy; }
 	void ClearLastHammeredBy() { m_HammeredBy = -1; } 
 	
-	struct tee_stats gstats;
+	//struct tee_stats gstats;
 private:
 	// player controlling this character
 	class CPlayer *m_pPlayer;

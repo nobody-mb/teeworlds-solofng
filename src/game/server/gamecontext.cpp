@@ -602,30 +602,32 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 	}
 }
 
-#include "entities/character.h"
+#include "player.h"
 
 
 void CGameContext::send_stats (int ClientID, int req_by, struct tee_stats *ct)
 {
 	char buf[128];
-	int c, d;
+	int c, d, e;
 
 	str_format(buf, sizeof(buf), "stats for %s (requested by %s)", 
 		Server()->ClientName(ClientID), Server()->ClientName(req_by));
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 
-	d = ct->deaths ? ct->deaths : 1;	
+	d = ct->deaths ? ct->deaths : 1;
+	e = ct->kills ? ct->kills : 1;
+	c = ct->kills + ct->kills_x2 + ct->kills_wrong;	
 	str_format(buf, sizeof(buf), 
-		"kills: %d + %d (x2) + %d (-1) | deaths: %d | ratio: %.03f",
-		ct->kills, ct->kills_x2, ct->kills_wrong, ct->deaths, 
-		(float)(ct->kills + ct->kills_x2 + ct->kills_wrong) / (float)d);
+		"kills: %d (%.02f%% x2, %.02f%% wrong) | deaths: %d | ratio: %.03f",
+		c, 100.0f * (float)ct->kills_x2 / (float)e, 
+		100.0f * (float)ct->kills_wrong / (float)e, ct->deaths, (float)c / (float)d);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 				
 	c = ct->shots ? ct->shots : 1; 
 	d = ct->frozen ? ct->frozen : 1;
 	str_format(buf, sizeof(buf),
 		"shots: %d | freezes: %d | accuracy: %.03f | frozen: %d | ratio: %.03f",
-		ct->shots, ct->freezes, (float)ct->freezes / (float)c, 
+		ct->shots, ct->freezes, 100.0f * ((float)ct->freezes / (float)c), 
 		ct->frozen, (float)ct->freezes / (float)d);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 	
@@ -733,7 +735,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			else if (str_comp(pMsg->m_pMessage, "/cmdlist") == 0)
 				SendChatTarget(ClientID, "What cmdlist?!");
 			else if (str_comp_num(pMsg->m_pMessage, "/stats", 6) == 0) {
-				if (strlen(pMsg->m_pMessage) > 6) {
+				if (strlen(pMsg->m_pMessage) > 7) {
 					char namebuf[64] = { 0 };
 					int i;
 					strcpy(namebuf, pMsg->m_pMessage + 7);
@@ -752,11 +754,11 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 						printf("invalid player %s\n", namebuf);
 					} else {
 						send_stats(m_apPlayers[i]->GetCID(), ClientID,
-							&m_apPlayers[i]->GetCharacter()->gstats);
+							&m_apPlayers[i]->gstats);
 					}
 				} else {
 					send_stats(ClientID, ClientID, 
-						&pPlayer->GetCharacter()->gstats);
+						&pPlayer->gstats);
 				}
 			}
 		}
@@ -1167,7 +1169,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 		if (pPlayer->GetCharacter() && pPlayer->GetCharacter()->GetFreezeTicks() > 0)
 			SendChatTarget(pPlayer->GetCID(), "You cannot commit suicide while being frozen!");
 		else {
-			pPlayer->GetCharacter()->gstats.suicides++;
+			pPlayer->gstats.suicides++;
 			pPlayer->KillCharacter(WEAPON_SELF);
 		}
 	}

@@ -7,6 +7,16 @@
 #include "entities/character.h"
 #include "gamecontext.h"
 
+struct tee_stats {
+		int spree, spree_max, multi, multis[6];
+		int kills, kills_wrong, kills_x2;
+		int lastkilltime, frozeby, deaths, steals, suicides;
+		int shots, freezes, frozen, hammers, hammered, teamhooks;
+		double avg_vel;
+		int num_samples, tick_count;
+	};
+
+
 // player object
 class CPlayer
 {
@@ -105,6 +115,8 @@ public:
 	int m_CampTick;
 	vec2 m_CampPos;
 
+	struct tee_stats gstats;
+	
 	bool GetBot(int BotType) { switch (BotType) {case 0: return m_SpinBot; case 1: return m_AimBot; default: return false;} }
 	void SetBot(int BotType) { switch (BotType) {case 0: m_SpinBot = true; break; case 1:m_AimBot = true; break;} }
 	
