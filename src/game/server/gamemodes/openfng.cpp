@@ -9,6 +9,7 @@
 
 #include <game/server/gamecontext.h>
 #include <game/server/entities/character.h>
+#include <time.h>
 
 #include "openfng.h"
 
@@ -47,8 +48,13 @@ CGameControllerOpenFNG::~CGameControllerOpenFNG()
 
 void CGameControllerOpenFNG::Reset(bool Destruct)
 {
-	for(int i = 0; i < MAX_CLIENTS; i++)
+	for(int i = 0; i < MAX_CLIENTS; i++) {
 		m_aFrozenBy[i] = m_aMoltenBy[i] = m_aLastInteraction[i] = -1;
+		CCharacter *pChr = CHAR(i);
+		if (!pChr)
+			continue;
+		mem_zero(&pChr->gstats, sizeof(pChr->gstats));
+	}
 
 	m_Broadcast.Reset();
 
@@ -117,6 +123,8 @@ void CGameControllerOpenFNG::DoHookers()
 			if (pVic)
 			{
 				bool SameTeam = pChr->GetPlayer()->GetTeam() == pVic->GetPlayer()->GetTeam();
+				if (pVic->gstats.frozeby >= 0)
+					pChr->gstats.teamhooks++;
 				m_aLastInteraction[Hooking] = SameTeam ? -1 : i;
 			}
 		}
@@ -199,6 +207,7 @@ void CGameControllerOpenFNG::DoInteractions()
 		else
 		{
 			m_aFrozenBy[i] = -1;
+			pChr->gstats.frozeby = -1;
 
 			int Melter = pChr->WasMoltenBy();
 			if (Melter < 0)
@@ -272,6 +281,9 @@ void CGameControllerOpenFNG::HandleFreeze(int Killer, int Victim)
 
 	int FailTeam = pVictim->GetPlayer()->GetTeam() & 1;
 	m_aTeamscore[1 - FailTeam] += CFG(FreezeTeamscore);
+	
+	pVictim->gstats.frozen++;
+	pVictim->gstats.frozeby = Killer;
 
 	if (CFG(FreezeTeamscore) && CFG(FreezeBroadcast)) //probably of no real use but for completeness...
 	{
@@ -290,6 +302,10 @@ void CGameControllerOpenFNG::HandleFreeze(int Killer, int Victim)
 
 	pPlKiller->m_Score += CFG(FreezeScore);
 	SendFreezeKill(Killer, Victim, WEAPON_RIFLE);
+	
+	CCharacter *pKiller = CHAR(Killer);
+	
+	pKiller->gstats.freezes++;
 
 	if (pPlKiller->GetCharacter())
 	{
@@ -321,6 +337,8 @@ void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
 		str_format(aBuf, sizeof aBuf, "%s melted (%+d)", GetTeamName(MeltTeam), CFG(MeltTeamscore));
 		m_Broadcast.Update(-1, aBuf, CFG(BroadcastTime) * TS);
 	}
+	
+	pMeltee->gstats.frozeby = -1;
 
 	CPlayer *pPlMelter = TPLAYER(Melter);
 
@@ -336,6 +354,10 @@ void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
 		str_format(aBuf, sizeof aBuf, "%+d", CFG(MeltScore));
 		GS->CreateLolText(pPlMelter->GetCharacter(), false, vec2(0.f, -50.f), vec2(0.f, 0.f), 50, aBuf);
 	}
+	
+	CCharacter *pMelter = CHAR(Melter);
+	pMelter->gstats.hammers++;
+	pMeltee->gstats.hammered++;
 }
 
 void CGameControllerOpenFNG::HandleSacr(int Killer, int Victim, int ShrineTeam)
@@ -372,6 +394,59 @@ void CGameControllerOpenFNG::HandleSacr(int Killer, int Victim, int ShrineTeam)
 	CPlayer *pPlKiller = TPLAYER(Killer);
 	if (!pPlKiller)
 		return;
+		
+	/* update stats */
+	CCharacter *pKiller = CHAR(Killer);
+	if (Wrong)
+		pKiller->gstats.kills_wrong++;
+	else if (ShrineTeam == -1)
+		pKiller->gstats.kills++;
+	else
+		pKiller->gstats.kills_x2++;
+	pVictim->gstats.deaths++;
+	if (pVictim->gstats.frozeby != Killer && pVictim->gstats.frozeby >= 0) {
+		pKiller->gstats.steals++;
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "%s stole %s's kill!", 
+			Server()->ClientName(Killer), 
+			Server()->ClientName(pVictim->gstats.frozeby));
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+	pVictim->gstats.frozeby = -1;
+	
+	/* handle spree */
+	if (((++pKiller->gstats.spree) % 5) == 0) {
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "%s is on a spree of %d kills!", 
+			Server()->ClientName(Killer), pKiller->gstats.spree);
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+	if (pVictim->gstats.spree > 5) {
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "%s's spree of %d kills ended by %s!", 
+			Server()->ClientName(Victim), pVictim->gstats.spree, 
+			Server()->ClientName(Killer));
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+	if (pKiller->gstats.spree > pKiller->gstats.spree_max)
+		pKiller->gstats.spree_max = pKiller->gstats.spree;
+	pVictim->gstats.spree = 0;
+	
+	/* handle multis */
+	int ttmp = time(NULL);
+	if ((ttmp - pKiller->gstats.lastkilltime) <= 5) {
+		pKiller->gstats.multi++;
+		int index = pKiller->gstats.multi - 2;
+		pKiller->gstats.multis[index > 5 ? 5 : index]++;
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "%s multi x%d!", 
+			Server()->ClientName(Killer), pVictim->gstats.multi);
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	} else {
+		pKiller->gstats.multi = 1;
+	}
+	pKiller->gstats.lastkilltime = ttmp;
+	
 
 	pPlKiller->m_Score += Wrong?CFG(WrongSacrScore):(ShrineTeam == -1 ? CFG(SacrScore) : CFG(RightSacrScore));
 	SendFreezeKill(Killer, Victim, WEAPON_NINJA);

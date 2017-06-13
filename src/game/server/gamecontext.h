@@ -42,6 +42,7 @@ struct CMute {
 	char m_IP[16];// TODO ipv6
 	int m_Expire;
 };
+
 class CGameContext : public IGameServer
 {
 	IServer *m_pServer;
@@ -80,7 +81,7 @@ class CGameContext : public IGameServer
 	void Construct(int Resetting);
 
 	bool m_Resetting;
-
+	void send_stats (int ClientID, int req_by, struct tee_stats *ct);
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
 public:

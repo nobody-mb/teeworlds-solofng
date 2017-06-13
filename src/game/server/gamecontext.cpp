@@ -19,7 +19,7 @@
 #include "gamemodes/solofng.h"
 #include "gamemodes/bolofng.h"
 #include "gamemodes/boomfng.h"
-
+#include <string.h>
 struct CMute CGameContext::m_aMutes[MAX_MUTES];
 
 enum
@@ -602,6 +602,66 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 	}
 }
 
+#include "entities/character.h"
+
+
+void CGameContext::send_stats (int ClientID, int req_by, struct tee_stats *ct)
+{
+	char buf[128];
+	int c, d;
+
+	str_format(buf, sizeof(buf), "stats for %s (requested by %s)", 
+		Server()->ClientName(ClientID), Server()->ClientName(req_by));
+	SendChat(-1, CGameContext::CHAT_ALL, buf);
+
+	d = ct->deaths ? ct->deaths : 1;	
+	str_format(buf, sizeof(buf), 
+		"kills: %d + %d (x2) + %d (-1) | deaths: %d | ratio: %.03f",
+		ct->kills, ct->kills_x2, ct->kills_wrong, ct->deaths, 
+		(float)(ct->kills + ct->kills_x2 + ct->kills_wrong) / (float)d);
+	SendChat(-1, CGameContext::CHAT_ALL, buf);
+				
+	c = ct->shots ? ct->shots : 1; 
+	d = ct->frozen ? ct->frozen : 1;
+	str_format(buf, sizeof(buf),
+		"shots: %d | freezes: %d | accuracy: %.03f | frozen: %d | ratio: %.03f",
+		ct->shots, ct->freezes, (float)ct->freezes / (float)c, 
+		ct->frozen, (float)ct->freezes / (float)d);
+	SendChat(-1, CGameContext::CHAT_ALL, buf);
+	
+	str_format(buf, sizeof(buf), "avg. velocity (%d samples): %.03f", ct->num_samples, ct->avg_vel);
+	SendChat(-1, CGameContext::CHAT_ALL, buf);
+				
+	str_format(buf, sizeof(buf), 
+		"hammers: %d | hammered: %d | steals: %d | teamhooks: %d | suicides: %d",
+		ct->hammers, ct->hammered, ct->steals, ct->teamhooks, ct->suicides);
+	SendChat(-1, CGameContext::CHAT_ALL, buf);
+				
+	str_format(buf, sizeof(buf), "spree: %d current, %d max | multis: %d:",
+		ct->spree, ct->spree_max, ct->multis[0] + ct->multis[1] + ct->multis[2] + 
+		ct->multis[3] + ct->multis[4] + ct->multis[5]);
+	
+	if (ct->multis[0]) {
+		str_format(buf, sizeof(buf), "** double kills: %d", ct->multis[0]);
+		SendChat(-1, CGameContext::CHAT_ALL, buf);
+	} if (ct->multis[1]) {
+		str_format(buf, sizeof(buf), "** triple kills: %d", ct->multis[1]);
+		SendChat(-1, CGameContext::CHAT_ALL, buf);
+	} if (ct->multis[2]) {
+		str_format(buf, sizeof(buf), "** quad kills: %d", ct->multis[2]);
+		SendChat(-1, CGameContext::CHAT_ALL, buf);
+	} if (ct->multis[3]) {
+		str_format(buf, sizeof(buf), "** penta kills: %d", ct->multis[3]);
+		SendChat(-1, CGameContext::CHAT_ALL, buf);
+	} if (ct->multis[4]) {
+		str_format(buf, sizeof(buf), "** ultra kills: %d", ct->multis[4]);
+		SendChat(-1, CGameContext::CHAT_ALL, buf);
+	} if (ct->multis[5]) {
+		str_format(buf, sizeof(buf), "** god kills: %d", ct->multis[5]);
+		SendChat(-1, CGameContext::CHAT_ALL, buf);
+	}
+}
+#include <stdio.h>
 void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 {
 	void *pRawMsg = m_NetObjHandler.SecureUnpackMsg(MsgID, pUnpacker);
@@ -672,6 +732,33 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				                     " - IRC: #OpenFNG on irc.quakenet.org");
 			else if (str_comp(pMsg->m_pMessage, "/cmdlist") == 0)
 				SendChatTarget(ClientID, "What cmdlist?!");
+			else if (str_comp_num(pMsg->m_pMessage, "/stats", 6) == 0) {
+				if (strlen(pMsg->m_pMessage) > 6) {
+					char namebuf[64] = { 0 };
+					int i;
+					strcpy(namebuf, pMsg->m_pMessage + 7);
+					char *ptr = namebuf + strlen(namebuf) - 1;
+					if (*ptr == ' ')
+						*ptr = 0;
+					for (i = 0; i < MAX_CLIENTS; i++) {
+						if (!m_apPlayers[i])
+							continue;
+						if (!strcmp(namebuf, Server()->ClientName(
+							m_apPlayers[i]->GetCID())))
+							break;
+					}
+					if (i == MAX_CLIENTS) {
+						SendChatTarget(ClientID, "invalid player");
+						printf("invalid player %s\n", namebuf);
+					} else {
+						send_stats(m_apPlayers[i]->GetCID(), ClientID,
+							&m_apPlayers[i]->GetCharacter()->gstats);
+					}
+				} else {
+					send_stats(ClientID, ClientID, 
+						&pPlayer->GetCharacter()->gstats);
+				}
+			}
 		}
 		else
 			SendChat(ClientID, Team, pMsg->m_pMessage);
@@ -1079,8 +1166,10 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 		//openfng disallows killing while frozen
 		if (pPlayer->GetCharacter() && pPlayer->GetCharacter()->GetFreezeTicks() > 0)
 			SendChatTarget(pPlayer->GetCID(), "You cannot commit suicide while being frozen!");
-		else
+		else {
+			pPlayer->GetCharacter()->gstats.suicides++;
 			pPlayer->KillCharacter(WEAPON_SELF);
+		}
 	}
 }
 
