@@ -4,11 +4,45 @@
 #include <new>
 #include <engine/shared/config.h>
 #include "player.h"
-
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
 
 MACRO_ALLOC_POOL_ID_IMPL(CPlayer, MAX_CLIENTS)
 
 IServer *CPlayer::Server() const { return m_pGameServer->Server(); }
+
+struct tee_stats CPlayer::read_statsfile (const char *name, time_t create)
+{
+	char path[128];
+	int src_fd;
+	struct tee_stats ret;
+	
+	memset(&ret, 0, sizeof(ret));
+	
+	snprintf(path, sizeof(path), "%s/%s.txt", STATS_DIR, name);
+	if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
+		if (create) {
+			fprintf(stderr, "creating file\n");
+			if ((src_fd = open(path, O_WRONLY|O_CREAT, 0777)) < 0) {
+				fprintf(stderr, "error creating file %s\n", path);
+				return ret;
+			}
+			ret.join_time = create;
+			write(src_fd, &ret, sizeof(ret));
+		}
+	} else {
+		if (read(src_fd, &ret, sizeof(ret)) != sizeof(ret)) {
+			fprintf(stderr, "didnt read enough data\n");
+		}
+	}
+	close(src_fd);
+
+	return ret;
+}
 
 CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 {
@@ -23,10 +57,50 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_LastActionTick = Server()->Tick();
 	m_ChatScore = 0;
 	m_TeamChangeTick = Server()->Tick();
+	gstats.join_time = time(NULL);
+	
+	totals = read_statsfile(Server()->ClientName(m_ClientID), gstats.join_time);
 }
 
 CPlayer::~CPlayer()
 {
+	if (gstats.spree_max > totals.spree_max)
+		totals.spree_max = gstats.spree_max;
+	
+	for (int i = 0; i < 6; i++)
+		totals.multis[i] += gstats.multis[i];
+		
+	totals.kills += gstats.kills;
+	totals.kills_x2 += gstats.kills_x2;
+	totals.kills_wrong += gstats.kills_wrong;
+	totals.deaths += gstats.deaths;
+	totals.steals += gstats.steals;
+	totals.suicides += gstats.suicides;
+	totals.shots += gstats.shots;
+	totals.freezes += gstats.freezes;
+	totals.frozen += gstats.frozen;
+	totals.hammers += gstats.hammers;
+	totals.hammered += gstats.hammered;
+	totals.teamhooks += gstats.teamhooks;
+	totals.join_time += (time(NULL) - gstats.join_time);
+	
+	char path[128];
+	int src_fd;
+	
+	snprintf(path, sizeof(path), "%s/%s.txt", STATS_DIR, 
+		Server()->ClientName(GetCID()));
+	if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
+		fprintf(stderr, "creating file\n");
+		if ((src_fd = open(path, O_WRONLY|O_CREAT, 0777)) < 0) {
+			fprintf(stderr, "error creating %s\n", path);
+			perror("a");
+			return;
+		}
+	}
+	
+	write(src_fd, &totals, sizeof(totals));
+	close(src_fd);
+	
 	delete m_pCharacter;
 	m_pCharacter = 0;
 }
@@ -166,6 +240,8 @@ void CPlayer::Snap(int SnappingClient)
 void CPlayer::OnDisconnect(const char *pReason)
 {
 	KillCharacter();
+	
+	
 
 	if(Server()->ClientIngame(m_ClientID))
 	{
@@ -241,6 +317,19 @@ void CPlayer::KillCharacter(int Weapon)
 		delete m_pCharacter;
 		m_pCharacter = 0;
 	}
+}
+
+double CPlayer::get_kd (struct tee_stats fstats)
+{
+	int k = fstats.kills + fstats.kills_x2 + fstats.kills_wrong;
+	int d = fstats.deaths ? fstats.deaths : 1;
+	return (double)k / (double)d;
+}
+
+double CPlayer::get_accuracy (struct tee_stats fstats)
+{
+	int d = fstats.shots ? fstats.shots : 1;
+	return (double)fstats.freezes / (double)d;
 }
 
 void CPlayer::Respawn()

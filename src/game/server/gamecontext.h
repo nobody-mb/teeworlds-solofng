@@ -81,7 +81,10 @@ class CGameContext : public IGameServer
 	void Construct(int Resetting);
 
 	bool m_Resetting;
-	void send_stats (int ClientID, int req_by, struct tee_stats *ct);
+	void send_stats (const char *name, int req_by, struct tee_stats *ct);
+	void print_best (int max, double (*callback)(struct tee_stats), int all);
+	double print_best_group (char *dst, double (*callback)(struct tee_stats), double max);
+double print_best_group_all (char *dst, double (*callback)(struct tee_stats), double max);
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
 public:

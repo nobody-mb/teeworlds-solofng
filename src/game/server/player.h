@@ -6,6 +6,10 @@
 // this include should perhaps be removed
 #include "entities/character.h"
 #include "gamecontext.h"
+#include <time.h>
+
+
+#define STATS_DIR "/Users/nobody1/stats"
 
 struct tee_stats {
 		int spree, spree_max, multi, multis[6];
@@ -14,6 +18,7 @@ struct tee_stats {
 		int shots, freezes, frozen, hammers, hammered, teamhooks;
 		double avg_vel;
 		int num_samples, tick_count;
+		time_t join_time;
 	};
 
 
@@ -23,6 +28,7 @@ class CPlayer
 	MACRO_ALLOC_POOL_ID()
 
 public:
+	static struct tee_stats read_statsfile (const char *name, time_t create);
 	CPlayer(CGameContext *pGameServer, int ClientID, int Team);
 	~CPlayer();
 
@@ -44,6 +50,9 @@ public:
 	
 	void KillCharacter(int Weapon = WEAPON_GAME);
 	CCharacter *GetCharacter();
+	
+	static double get_kd (struct tee_stats);
+	static double get_accuracy (struct tee_stats);
 
 	//---------------------------------------------------------
 	// this is used for snapping so we know how we can clip the view for the player
@@ -116,6 +125,7 @@ public:
 	vec2 m_CampPos;
 
 	struct tee_stats gstats;
+	struct tee_stats totals;
 	
 	bool GetBot(int BotType) { switch (BotType) {case 0: return m_SpinBot; case 1: return m_AimBot; default: return false;} }
 	void SetBot(int BotType) { switch (BotType) {case 0: m_SpinBot = true; break; case 1:m_AimBot = true; break;} }

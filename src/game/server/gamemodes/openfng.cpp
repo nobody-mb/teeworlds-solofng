@@ -344,7 +344,7 @@ void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
 	CPlayer *pPlMelter = TPLAYER(Melter);
 	CPlayer *pPlMeltee = TPLAYER(Meltee);
 	
-	if (!pPlMelter || !pPlMeltee)
+	if (!pPlMeltee)
 		return;
 
 	pPlMeltee->gstats.frozeby = -1;

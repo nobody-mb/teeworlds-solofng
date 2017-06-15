@@ -20,6 +20,7 @@
 #include "gamemodes/bolofng.h"
 #include "gamemodes/boomfng.h"
 #include <string.h>
+#include <stdio.h>
 struct CMute CGameContext::m_aMutes[MAX_MUTES];
 
 enum
@@ -603,24 +604,111 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 }
 
 #include "player.h"
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 
-void CGameContext::send_stats (int ClientID, int req_by, struct tee_stats *ct)
+double CGameContext::print_best_group_all (char *dst, double (*callback)(struct tee_stats), double max)
+{
+	return 0;
+	double kd = 0, best = 0;
+	struct dirent *ds;
+	DIR *dp;
+	char tmp_buf[128];
+	
+	dp = opendir(STATS_DIR);
+	while ((ds = readdir(dp)))
+		if (*ds->d_name != '.') {
+			kd = callback(CPlayer::read_statsfile(ds->d_name, 0));
+			if ((kd > best) && (kd < max))
+				best = kd;
+		}
+	closedir(dp);
+	
+	dp = opendir(STATS_DIR);
+	while ((ds = readdir(dp)))
+		if (*ds->d_name != '.') {
+			if (callback(CPlayer::read_statsfile(ds->d_name, 0)) == best) {
+				strcat(dst, ds->d_name);
+				strcat(dst, ", ");
+			}
+		}
+	closedir(dp);
+	
+	strncpy(tmp_buf, dst, strlen(dst) - 2);
+	sprintf(dst, "%.03f (%s)", best, ((best != 0) ? tmp_buf : "None"));
+	
+	return best;
+}
+
+double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_stats), double max)
+{
+	int i;
+	double kd = 0, best = 0;
+	char tmp_buf[128] = { 0 };
+	
+	for (i = 0; i < MAX_CLIENTS; i++) {
+		if (!m_apPlayers[i])
+			continue;
+		kd = callback(m_apPlayers[i]->gstats);
+		if ((kd > best) && (kd < max))
+			best = kd;
+	}
+	for (i = 0; i < MAX_CLIENTS; i++) {
+		if (!m_apPlayers[i])
+			continue;
+		kd = callback(m_apPlayers[i]->gstats);
+		if (kd == best) {
+			strcat(tmp_buf, Server()->ClientName(m_apPlayers[i]->GetCID()));
+			strcat(tmp_buf, ", ");
+		}
+	}
+	
+	tmp_buf[strlen(tmp_buf) - 2] = 0;
+
+	sprintf(dst, "%.03f (%s)", best, ((best != 0) ? tmp_buf : "None"));
+	
+	return best;
+}
+
+#define PLACEHOLDER 9999999999
+
+void CGameContext::print_best (int max, double (*callback)(struct tee_stats), int all)
+{
+	double tmp, best = PLACEHOLDER;
+	char buf[256];
+	while (max--) {
+		memset(buf, 0, sizeof(buf));
+		if (all)
+			tmp = print_best_group_all(buf, callback, best);
+		else
+			tmp = print_best_group(buf, callback, best);
+		if ((tmp >= best) || (best < PLACEHOLDER && tmp == 0))
+			break;
+		SendChat(-1, CGameContext::CHAT_ALL, buf);
+		best = tmp;
+	}
+}
+
+void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *ct)
 {
 	char buf[128];
-	int c, d, e;
-
+	int c, d;
+	time_t diff = time(NULL) - ct->join_time;
 	str_format(buf, sizeof(buf), "stats for %s (requested by %s)", 
-		Server()->ClientName(ClientID), Server()->ClientName(req_by));
+		name, Server()->ClientName(req_by));
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 
 	d = ct->deaths ? ct->deaths : 1;
-	e = ct->kills ? ct->kills : 1;
 	c = ct->kills + ct->kills_x2 + ct->kills_wrong;	
 	str_format(buf, sizeof(buf), 
-		"kills: %d (%.02f%% x2, %.02f%% wrong) | deaths: %d | ratio: %.03f",
-		c, 100.0f * (float)ct->kills_x2 / (float)e, 
-		100.0f * (float)ct->kills_wrong / (float)e, ct->deaths, (float)c / (float)d);
+		"kills: %d (%d x2, %d wrong) | deaths: %d | ratio: %.03f",
+		c, ct->kills_x2, ct->kills_wrong, ct->deaths, (float)c / (float)d);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 				
 	c = ct->shots ? ct->shots : 1; 
@@ -631,7 +719,8 @@ void CGameContext::send_stats (int ClientID, int req_by, struct tee_stats *ct)
 		ct->frozen, (float)ct->freezes / (float)d);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 	
-	str_format(buf, sizeof(buf), "avg. velocity (%d samples): %.03f", ct->num_samples, ct->avg_vel);
+	str_format(buf, sizeof(buf), "time: %d:%.02d | avg. vel (%d samples): %.03f", 
+		diff / 60, diff % 60, ct->num_samples, ct->avg_vel);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 				
 	str_format(buf, sizeof(buf), 
@@ -663,7 +752,7 @@ void CGameContext::send_stats (int ClientID, int req_by, struct tee_stats *ct)
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	}
 }
-#include <stdio.h>
+
 void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 {
 	void *pRawMsg = m_NetObjHandler.SecureUnpackMsg(MsgID, pUnpacker);
@@ -734,7 +823,31 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				                     " - IRC: #OpenFNG on irc.quakenet.org");
 			else if (str_comp(pMsg->m_pMessage, "/cmdlist") == 0)
 				SendChatTarget(ClientID, "What cmdlist?!");
-			else if (str_comp_num(pMsg->m_pMessage, "/stats", 6) == 0) {
+			else if (str_comp_num(pMsg->m_pMessage, "/statsall", 9) == 0) {
+				if (strlen(pMsg->m_pMessage) > 10) {
+					char namebuf[64] = { 0 };
+					strcpy(namebuf, pMsg->m_pMessage + 10);
+					char *ptr = namebuf + strlen(namebuf) - 1;
+					if (*ptr == ' ')
+						*ptr = 0;
+					struct tee_stats tmp;
+					
+					tmp = CPlayer::read_statsfile(namebuf, 0);
+					if (!tmp.join_time) {										
+						SendChatTarget(ClientID, "invalid player");
+						printf("invalid player %s\n", namebuf);
+					} else {
+						send_stats(namebuf, ClientID, &tmp);
+					}
+				} else {
+					struct tee_stats tmp;
+					
+					tmp = CPlayer::read_statsfile(
+						Server()->ClientName(ClientID), 0);
+					send_stats(Server()->ClientName(ClientID), 
+						ClientID, &tmp);
+				}
+			} else if (str_comp_num(pMsg->m_pMessage, "/stats", 6) == 0) {
 				if (strlen(pMsg->m_pMessage) > 7) {
 					char namebuf[64] = { 0 };
 					int i;
@@ -753,14 +866,23 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 						SendChatTarget(ClientID, "invalid player");
 						printf("invalid player %s\n", namebuf);
 					} else {
-						send_stats(m_apPlayers[i]->GetCID(), ClientID,
-							&m_apPlayers[i]->gstats);
+						send_stats(Server()->ClientName(m_apPlayers[i]->GetCID()),
+							ClientID, &m_apPlayers[i]->gstats);
 					}
 				} else {
-					send_stats(ClientID, ClientID, 
-						&pPlayer->gstats);
+					send_stats(Server()->ClientName(ClientID), 
+						ClientID, &pPlayer->gstats);
 				}
-			}
+			} else if (str_comp_num(pMsg->m_pMessage, "/top", 4) == 0) { 
+				int all = 0;
+				if (str_comp_num(pMsg->m_pMessage, "/topall", 7) == 0) 
+					all = 1;
+				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
+				print_best(4, &CPlayer::get_kd, all);
+				
+				SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
+				print_best(4, &CPlayer::get_accuracy, all);
+			} 
 		}
 		else
 			SendChat(ClientID, Team, pMsg->m_pMessage);

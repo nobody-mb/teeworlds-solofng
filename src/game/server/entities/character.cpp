@@ -725,12 +725,13 @@ void CCharacter::ResetInput()
 	m_Input.m_Jump = 0;
 	m_LatestPrevInput = m_LatestInput = m_Input;
 }
-
+#include <stdio.h>
 void CCharacter::Tick()
 {
 	if (++m_pPlayer->gstats.tick_count >= 100000) {
 		double vel_cur = sqrt((m_Core.m_Vel.x * m_Core.m_Vel.x) + 
 					(m_Core.m_Vel.y * m_Core.m_Vel.y));
+		printf("current vel sample %d = %lf\n", m_pPlayer->gstats.num_samples, vel_cur);
 		m_pPlayer->gstats.avg_vel = (vel_cur + (m_pPlayer->gstats.avg_vel * 
 			m_pPlayer->gstats.num_samples)) / (m_pPlayer->gstats.num_samples + 1);
 		m_pPlayer->gstats.num_samples++;
