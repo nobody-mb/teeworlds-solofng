@@ -23,7 +23,7 @@ struct tee_stats CPlayer::read_statsfile (const char *name, time_t create)
 	
 	memset(&ret, 0, sizeof(ret));
 	
-	snprintf(path, sizeof(path), "%s/%s.txt", STATS_DIR, name);
+	snprintf(path, sizeof(path), "%s/%s", STATS_DIR, name);
 	if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
 		if (create) {
 			fprintf(stderr, "creating file\n");

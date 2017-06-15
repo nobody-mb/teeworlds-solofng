@@ -615,11 +615,11 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 
 double CGameContext::print_best_group_all (char *dst, double (*callback)(struct tee_stats), double max)
 {
-	return 0;
+	//return 0;
 	double kd = 0, best = 0;
 	struct dirent *ds;
 	DIR *dp;
-	char tmp_buf[128];
+	char tmp_buf[128] = { 0 };
 	
 	dp = opendir(STATS_DIR);
 	while ((ds = readdir(dp)))
@@ -634,13 +634,16 @@ double CGameContext::print_best_group_all (char *dst, double (*callback)(struct 
 	while ((ds = readdir(dp)))
 		if (*ds->d_name != '.') {
 			if (callback(CPlayer::read_statsfile(ds->d_name, 0)) == best) {
-				strcat(dst, ds->d_name);
-				strcat(dst, ", ");
+				if ((strlen(ds->d_name) + strlen(tmp_buf)) > sizeof(tmp_buf))
+					break;
+				strcat(tmp_buf, ds->d_name);
+				strcat(tmp_buf, ", ");
 			}
 		}
 	closedir(dp);
 	
-	strncpy(tmp_buf, dst, strlen(dst) - 2);
+	tmp_buf[strlen(tmp_buf) - 2] = 0;
+	
 	sprintf(dst, "%.03f (%s)", best, ((best != 0) ? tmp_buf : "None"));
 	
 	return best;
