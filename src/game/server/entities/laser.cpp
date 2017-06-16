@@ -53,10 +53,13 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 	m_Energy = -1;
 	//Hit->TakeDamage(vec2(0.f, 0.f), GameServer()->Tuning()->m_LaserDamage, m_Owner, WEAPON_RIFLE);
 
-	if (OwnerChar && (!GameServer()->m_pController->IsTeamplay() || OwnerChar->GetPlayer()->GetTeam() != Hit->GetPlayer()->GetTeam()))
-	{
-		if (Hit->GetFreezeTicks() <= 0 && Hit->GetMeltTick() + g_Config.m_SvMeltSafeticks < Server()->Tick())
-			Hit->Freeze(GameServer()->Tuning()->m_LaserDamage * Server()->TickSpeed(), m_Owner);
+	if ((OwnerChar && (!GameServer()->m_pController->IsTeamplay() || 
+	    OwnerChar->GetPlayer()->GetTeam() != Hit->GetPlayer()->GetTeam())) && 
+	    (Hit->GetFreezeTicks() <= 0 && 
+	    Hit->GetMeltTick() + g_Config.m_SvMeltSafeticks < Server()->Tick())) {
+		if (m_Bounces)
+		    	OwnerChar->GetPlayer()->gstats.bounce_shots++;
+		Hit->Freeze(GameServer()->Tuning()->m_LaserDamage * Server()->TickSpeed(), m_Owner);
 	}
 
 

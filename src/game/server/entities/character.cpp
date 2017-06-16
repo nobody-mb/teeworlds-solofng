@@ -5,6 +5,7 @@
 #include <engine/shared/config.h>
 #include <game/server/gamecontext.h>
 #include <game/mapitems.h>
+#include <stdio.h>
 
 #include "character.h"
 #include "laser.h"
@@ -681,8 +682,9 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 			float CheckAimDis = distance(m_Pos + TarPos, GameServer()->m_apPlayers[i]->GetCharacter()->m_Pos);
 			if (CheckAimDis < 1)
 			{
-				str_format(aBuf, sizeof(aBuf), "%d : %.2f",m_pPlayer->GetCID(), CheckAimDis);
-				GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+				//str_format(aBuf, sizeof(aBuf), 
+				printf("%d : %.2f\n",m_pPlayer->GetCID(), CheckAimDis);
+				//GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 			}
 		}
 	}
@@ -728,7 +730,7 @@ void CCharacter::ResetInput()
 #include <stdio.h>
 void CCharacter::Tick()
 {
-	if (++m_pPlayer->gstats.tick_count >= 100000) {
+	/*if (++m_pPlayer->gstats.tick_count >= 100000) {
 		double vel_cur = sqrt((m_Core.m_Vel.x * m_Core.m_Vel.x) + 
 					(m_Core.m_Vel.y * m_Core.m_Vel.y));
 		printf("current vel sample %d = %lf\n", m_pPlayer->gstats.num_samples, vel_cur);
@@ -736,7 +738,7 @@ void CCharacter::Tick()
 			m_pPlayer->gstats.num_samples)) / (m_pPlayer->gstats.num_samples + 1);
 		m_pPlayer->gstats.num_samples++;
 		m_pPlayer->gstats.tick_count = 0;
-	}
+	}*/
 	if(m_pPlayer->m_ForceBalanced)
 	{
 		char Buf[128];

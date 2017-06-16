@@ -82,6 +82,7 @@ CPlayer::~CPlayer()
 	totals.hammers += gstats.hammers;
 	totals.hammered += gstats.hammered;
 	totals.teamhooks += gstats.teamhooks;
+	totals.bounce_shots += gstats.bounce_shots;
 	totals.join_time += (time(NULL) - gstats.join_time);
 	
 	char path[128];
@@ -319,6 +320,11 @@ void CPlayer::KillCharacter(int Weapon)
 	}
 }
 
+double CPlayer::get_max_spree (struct tee_stats fstats)
+{
+	return (double)fstats.spree_max;
+}
+
 double CPlayer::get_kd (struct tee_stats fstats)
 {
 	int k = fstats.kills + fstats.kills_x2 + fstats.kills_wrong;
@@ -328,6 +334,9 @@ double CPlayer::get_kd (struct tee_stats fstats)
 
 double CPlayer::get_accuracy (struct tee_stats fstats)
 {
+	if (fstats.shots < 5)
+		return 0.0f;
+		
 	int d = fstats.shots ? fstats.shots : 1;
 	return (double)fstats.freezes / (double)d;
 }

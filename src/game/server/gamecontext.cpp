@@ -727,8 +727,8 @@ void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *c
 		ct->frozen, (float)ct->freezes / (float)d);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 	
-	str_format(buf, sizeof(buf), "time: %d:%.02d | avg. vel (%d samples): %.03f", 
-		diff / 60, diff % 60, ct->num_samples, ct->avg_vel);
+	str_format(buf, sizeof(buf), "time: %d:%.02d | bounce shots: %d", 
+		diff / 60, diff % 60, ct->bounce_shots);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 				
 	str_format(buf, sizeof(buf), 
@@ -887,6 +887,9 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					all = 1;
 				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
 				print_best(4, &CPlayer::get_kd, all);
+				
+				SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
+				print_best(4, &CPlayer::get_max_spree, all);
 				
 				SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
 				print_best(4, &CPlayer::get_accuracy, all);

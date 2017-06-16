@@ -17,7 +17,7 @@ struct tee_stats {
 		int lastkilltime, frozeby, deaths, steals, suicides;
 		int shots, freezes, frozen, hammers, hammered, teamhooks;
 		double avg_vel;
-		int num_samples, tick_count;
+		int bounce_shots, tick_count;
 		time_t join_time;
 	};
 
@@ -53,7 +53,7 @@ public:
 	
 	static double get_kd (struct tee_stats);
 	static double get_accuracy (struct tee_stats);
-
+	static double get_max_spree (struct tee_stats fstats);
 	//---------------------------------------------------------
 	// this is used for snapping so we know how we can clip the view for the player
 	vec2 m_ViewPos;
