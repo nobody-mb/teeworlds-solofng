@@ -87,7 +87,7 @@ CPlayer::~CPlayer()
 	char path[128];
 	int src_fd;
 	
-	snprintf(path, sizeof(path), "%s/%s.txt", STATS_DIR, 
+	snprintf(path, sizeof(path), "%s/%s", STATS_DIR, 
 		Server()->ClientName(GetCID()));
 	if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
 		fprintf(stderr, "creating file\n");

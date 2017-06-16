@@ -666,8 +666,11 @@ double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_
 		if (!m_apPlayers[i])
 			continue;
 		kd = callback(m_apPlayers[i]->gstats);
+		int cid = m_apPlayers[i]->GetCID();
 		if (kd == best) {
-			strcat(tmp_buf, Server()->ClientName(m_apPlayers[i]->GetCID()));
+			if (strlen(tmp_buf) + strlen(Server()->ClientName(cid)) > sizeof(tmp_buf))
+				break;
+			strcat(tmp_buf, Server()->ClientName(cid));
 			strcat(tmp_buf, ", ");
 		}
 	}
@@ -695,6 +698,8 @@ void CGameContext::print_best (int max, double (*callback)(struct tee_stats), in
 			break;
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 		best = tmp;
+		if (best == 0) 
+			break;
 	}
 }
 
@@ -717,7 +722,7 @@ void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *c
 	c = ct->shots ? ct->shots : 1; 
 	d = ct->frozen ? ct->frozen : 1;
 	str_format(buf, sizeof(buf),
-		"shots: %d | freezes: %d | accuracy: %.03f | frozen: %d | ratio: %.03f",
+		"shots: %d | freezes: %d | accuracy: %.03f%% | frozen: %d | ratio: %.03f",
 		ct->shots, ct->freezes, 100.0f * ((float)ct->freezes / (float)c), 
 		ct->frozen, (float)ct->freezes / (float)d);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);

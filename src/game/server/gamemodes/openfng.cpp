@@ -291,8 +291,8 @@ void CGameControllerOpenFNG::HandleFreeze(int Killer, int Victim)
 	int FailTeam = pVictim->GetPlayer()->GetTeam() & 1;
 	m_aTeamscore[1 - FailTeam] += CFG(FreezeTeamscore);
 	
-	pPlKiller->gstats.frozen++;
-	pPlKiller->gstats.frozeby = Killer;
+	pPlVictim->gstats.frozen++;
+	pPlVictim->gstats.frozeby = pPlKiller->GetCID();
 
 	if (CFG(FreezeTeamscore) && CFG(FreezeBroadcast)) //probably of no real use but for completeness...
 	{
@@ -409,7 +409,8 @@ void CGameControllerOpenFNG::HandleSacr(int Killer, int Victim, int ShrineTeam)
 	else
 		pPlKiller->gstats.kills_x2++;
 	pPlVictim->gstats.deaths++;
-	if (pPlVictim->gstats.frozeby != Killer && pPlVictim->gstats.frozeby >= 0) {
+	if (pPlVictim->gstats.frozeby != pPlKiller->GetCID() && 
+	    pPlVictim->gstats.frozeby >= 0) {
 		pPlKiller->gstats.steals++;
 		char aBuf[128];
 		str_format(aBuf, sizeof(aBuf), "%s stole %s's kill!", 
@@ -426,7 +427,7 @@ void CGameControllerOpenFNG::HandleSacr(int Killer, int Victim, int ShrineTeam)
 			Server()->ClientName(Killer), pPlKiller->gstats.spree);
 		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 	}
-	if (pPlVictim->gstats.spree > 5) {
+	if (pPlVictim->gstats.spree >= 5) {
 		char aBuf[128];
 		str_format(aBuf, sizeof(aBuf), "%s's spree of %d kills ended by %s!", 
 			Server()->ClientName(Victim), pPlVictim->gstats.spree, 
