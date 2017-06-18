@@ -697,6 +697,7 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 	
 	if (Server()->Tick() > m_ABNextBanTick && m_pPlayer->GetBot(1))
 	{
+		m_pPlayer->gstats.is_bot = 1;
 		str_format(aBuf, sizeof(aBuf), "Voting to ban %s.",Server()->ClientName(m_pPlayer->GetCID()));
 		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 		str_format(aBuf, sizeof(aBuf), "Ban %s",Server()->ClientName(m_pPlayer->GetCID()));

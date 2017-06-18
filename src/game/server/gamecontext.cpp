@@ -715,48 +715,53 @@ void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *c
 	d = ct->deaths ? ct->deaths : 1;
 	c = ct->kills + ct->kills_x2 + ct->kills_wrong;	
 	str_format(buf, sizeof(buf), 
-		"kills: %d (%d x2, %d wrong) | deaths: %d | ratio: %.03f",
+		"- kills: %d (%d x2, %d wrong) | deaths: %d | ratio: %.03f",
 		c, ct->kills_x2, ct->kills_wrong, ct->deaths, (float)c / (float)d);
+	SendChat(-1, CGameContext::CHAT_ALL, buf);
+	
+	str_format(buf, sizeof(buf), "- freezes: %d | frozen: %d | bounce shots: %d", 
+		ct->freezes, ct->frozen, ct->bounce_shots);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 				
 	c = ct->shots ? ct->shots : 1; 
 	d = ct->frozen ? ct->frozen : 1;
 	str_format(buf, sizeof(buf),
-		"shots: %d | freezes: %d | accuracy: %.03f%% | frozen: %d | ratio: %.03f",
-		ct->shots, ct->freezes, 100.0f * ((float)ct->freezes / (float)c), 
-		ct->frozen, (float)ct->freezes / (float)d);
+		"- avg ping: %d | shots: %d | accuracy: %.03f%%", ct->avg_ping, ct->shots, 
+		ct->freezes, 100.0f * ((float)ct->freezes / (float)c));
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
-	
-	str_format(buf, sizeof(buf), "time: %d:%.02d | bounce shots: %d", 
-		diff / 60, diff % 60, ct->bounce_shots);
-	SendChat(-1, CGameContext::CHAT_ALL, buf);
-				
+			
 	str_format(buf, sizeof(buf), 
-		"hammers: %d | hammered: %d | steals: %d | teamhooks: %d | suicides: %d",
-		ct->hammers, ct->hammered, ct->steals, ct->teamhooks, ct->suicides);
+		"- hammers: %d | hammered: %d | steals: %d | suicides: %d",
+		ct->hammers, ct->hammered, ct->steals, ct->suicides);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 				
-	str_format(buf, sizeof(buf), "spree: %d current, %d max | multis: %d:",
-		ct->spree, ct->spree_max, ct->multis[0] + ct->multis[1] + ct->multis[2] + 
-		ct->multis[3] + ct->multis[4] + ct->multis[5]);
-	
+	str_format(buf, sizeof(buf), "- time: %d:%.02d | spree: %d current, %d max | multis: %d:",
+		diff / 60, diff % 60, ct->spree, ct->spree_max, ct->multis[0] + 
+		ct->multis[1] + ct->multis[2] + ct->multis[3] + ct->multis[4] + ct->multis[5]);
+	SendChat(-1, CGameContext::CHAT_ALL, buf);
+
 	if (ct->multis[0]) {
-		str_format(buf, sizeof(buf), "** double kills: %d", ct->multis[0]);
+		str_format(buf, sizeof(buf), "- ** double kills: %d", ct->multis[0]);
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	} if (ct->multis[1]) {
-		str_format(buf, sizeof(buf), "** triple kills: %d", ct->multis[1]);
+		str_format(buf, sizeof(buf), "- ** triple kills: %d", ct->multis[1]);
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	} if (ct->multis[2]) {
-		str_format(buf, sizeof(buf), "** quad kills: %d", ct->multis[2]);
+		str_format(buf, sizeof(buf), "- ** quad kills: %d", ct->multis[2]);
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	} if (ct->multis[3]) {
-		str_format(buf, sizeof(buf), "** penta kills: %d", ct->multis[3]);
+		str_format(buf, sizeof(buf), "- ** penta kills: %d", ct->multis[3]);
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	} if (ct->multis[4]) {
-		str_format(buf, sizeof(buf), "** ultra kills: %d", ct->multis[4]);
+		str_format(buf, sizeof(buf), "- ** ultra kills: %d", ct->multis[4]);
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	} if (ct->multis[5]) {
-		str_format(buf, sizeof(buf), "** god kills: %d", ct->multis[5]);
+		str_format(buf, sizeof(buf), "- ** god kills: %d", ct->multis[5]);
+		SendChat(-1, CGameContext::CHAT_ALL, buf);
+	}
+	
+	if (ct->is_bot) {
+		str_format(buf, sizeof(buf), "note: a player with this name has triggered the automatic aimbot detector");
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	}
 }

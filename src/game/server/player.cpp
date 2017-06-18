@@ -83,7 +83,13 @@ CPlayer::~CPlayer()
 	totals.hammered += gstats.hammered;
 	totals.teamhooks += gstats.teamhooks;
 	totals.bounce_shots += gstats.bounce_shots;
+	if (gstats.is_bot)
+		totals.is_bot = 1;
 	totals.join_time += (time(NULL) - gstats.join_time);
+	
+	totals.avg_ping = (unsigned short)((float)(gstats.avg_ping + 
+					(float)(totals.num_samples * totals.avg_ping)) / 
+					(++totals.num_samples));
 	
 	char path[128];
 	int src_fd;
@@ -140,6 +146,14 @@ void CPlayer::Tick()
 			m_Latency.m_Accum = 0;
 			m_Latency.m_AccumMin = 1000;
 			m_Latency.m_AccumMax = 0;
+
+			if (!(++gstats.ping_tick % 16)) {
+				gstats.ping_tick = 0;
+				gstats.avg_ping = (unsigned short)((float)(m_Latency.m_Avg + 
+					(float)(gstats.num_samples * gstats.avg_ping)) / 
+					(gstats.num_samples + 1));
+				gstats.num_samples++;
+			}
 		}
 	}
 
@@ -334,7 +348,7 @@ double CPlayer::get_kd (struct tee_stats fstats)
 
 double CPlayer::get_accuracy (struct tee_stats fstats)
 {
-	if (fstats.shots < 5)
+	if (fstats.shots < 2)
 		return 0.0f;
 		
 	int d = fstats.shots ? fstats.shots : 1;

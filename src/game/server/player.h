@@ -16,7 +16,9 @@ struct tee_stats {
 		int kills, kills_wrong, kills_x2;
 		int lastkilltime, frozeby, deaths, steals, suicides;
 		int shots, freezes, frozen, hammers, hammered, teamhooks;
-		double avg_vel;
+		int num_samples;
+		unsigned short avg_ping;
+		unsigned char ping_tick, is_bot;
 		int bounce_shots, tick_count;
 		time_t join_time;
 	};
