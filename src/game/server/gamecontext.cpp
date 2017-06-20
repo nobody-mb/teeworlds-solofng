@@ -836,6 +836,17 @@ void CGameContext::on_round_end (void)
 	memset(round_names, 0, sizeof(round_names));
 	round_index = 0;
 	printf("round ended !\n");
+	
+	for (i = 0; i < MAX_CLIENTS; i++) {
+		struct tee_stats tm = { 0 };
+		tm.join_time = time(NULL);
+		if (!m_apPlayers[i])
+			continue;
+		CPlayer *tmp = m_apPlayers[i];
+		add_round_entry(tm, Server()->ClientName(tmp->GetCID()));
+	}
+			
+			
 }
 
 struct tee_stats *CGameContext::find_round_entry (const char *name)
