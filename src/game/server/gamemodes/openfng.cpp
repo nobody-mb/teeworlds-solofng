@@ -3,7 +3,7 @@
 /* release at teeworlds.com.                                              */
 
 #include <base/system.h>
-
+#include <stdio.h>
 #include <engine/shared/config.h>
 //#include <engine/server/server.h>
 

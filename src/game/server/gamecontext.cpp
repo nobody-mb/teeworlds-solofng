@@ -800,30 +800,34 @@ void CGameContext::on_round_end (void)
 		if (!m_apPlayers[i])
 			continue;
 		CPlayer *tmp = m_apPlayers[i];
-		if (round_stats[i].spree_max > tmp->totals.spree_max)
-			tmp->totals.spree_max = round_stats[i].spree_max;
+		struct tee_stats *tp = find_round_entry(Server()->ClientName(tmp->GetCID()));
+		if (!tp)
+			continue;
+			
+		if (tp->spree_max > tmp->totals.spree_max)
+			tmp->totals.spree_max = tp->spree_max;
 	
 		for (int j = 0; j < 6; j++)
-			tmp->totals.multis[j] += round_stats[j].multis[j];
+			tmp->totals.multis[j] += tp->multis[j];
 		
-		tmp->totals.kills += round_stats[i].kills;
-		tmp->totals.kills_x2 += round_stats[i].kills_x2;
-		tmp->totals.kills_wrong += round_stats[i].kills_wrong;
-		tmp->totals.deaths += round_stats[i].deaths;
-		tmp->totals.steals += round_stats[i].steals;
-		tmp->totals.suicides += round_stats[i].suicides;
-		tmp->totals.shots += round_stats[i].shots;
-		tmp->totals.freezes += round_stats[i].freezes;
-		tmp->totals.frozen += round_stats[i].frozen;
-		tmp->totals.hammers += round_stats[i].hammers;
-		tmp->totals.hammered += round_stats[i].hammered;
-		tmp->totals.teamhooks += round_stats[i].teamhooks;
-		tmp->totals.bounce_shots += round_stats[i].bounce_shots;
-		if (round_stats[i].is_bot)
+		tmp->totals.kills += tp->kills;
+		tmp->totals.kills_x2 += tp->kills_x2;
+		tmp->totals.kills_wrong += tp->kills_wrong;
+		tmp->totals.deaths += tp->deaths;
+		tmp->totals.steals += tp->steals;
+		tmp->totals.suicides += tp->suicides;
+		tmp->totals.shots += tp->shots;
+		tmp->totals.freezes += tp->freezes;
+		tmp->totals.frozen += tp->frozen;
+		tmp->totals.hammers += tp->hammers;
+		tmp->totals.hammered += tp->hammered;
+		tmp->totals.teamhooks += tp->teamhooks;
+		tmp->totals.bounce_shots += tp->bounce_shots;
+		if (tp->is_bot)
 			tmp->totals.is_bot = 1;
-		tmp->totals.join_time += (time(NULL) - round_stats[i].join_time);
+		tmp->totals.join_time += (time(NULL) - tp->join_time);
 	
-		tmp->totals.avg_ping = (unsigned short)((float)(round_stats[i].avg_ping + 
+		tmp->totals.avg_ping = (unsigned short)((float)(tp->avg_ping + 
 						(float)(tmp->totals.num_samples * 
 						tmp->totals.avg_ping)) / 
 						(++tmp->totals.num_samples));
