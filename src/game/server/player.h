@@ -9,8 +9,11 @@
 #include <time.h>
 
 
-#define STATS_DIR "/Users/nobody1/stats"
+#define STATS_DIR "stats"
 
+
+#ifndef TEE_STATS
+#define TEE_STATS
 struct tee_stats {
 		int spree, spree_max, multi, multis[6];
 		int kills, kills_wrong, kills_x2;
@@ -22,6 +25,7 @@ struct tee_stats {
 		int bounce_shots, tick_count;
 		time_t join_time;
 	};
+#endif
 
 
 // player object

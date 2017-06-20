@@ -38,6 +38,22 @@
 			All players (CPlayer::snap)
 
 */
+
+#ifndef TEE_STATS
+#define TEE_STATS
+struct tee_stats {
+		int spree, spree_max, multi, multis[6];
+		int kills, kills_wrong, kills_x2;
+		int lastkilltime, frozeby, deaths, steals, suicides;
+		int shots, freezes, frozen, hammers, hammered, teamhooks;
+		int num_samples;
+		unsigned short avg_ping;
+		unsigned char ping_tick, is_bot;
+		int bounce_shots, tick_count;
+		time_t join_time;
+	};
+#endif
+
 struct CMute {
 	char m_IP[16];// TODO ipv6
 	int m_Expire;
@@ -87,6 +103,11 @@ class CGameContext : public IGameServer
 double print_best_group_all (char *dst, double (*callback)(struct tee_stats), double max);
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
+	
+	struct tee_stats round_stats[512];
+	char round_names[512][64];
+	int round_index;
+	
 public:
 	IServer *Server() const { return m_pServer; }
 	class IConsole *Console() { return m_pConsole; }
@@ -97,6 +118,8 @@ public:
 	~CGameContext();
 
 	void Clear();
+	
+	void add_round_entry (struct tee_stats st, const char *name);
 
 	CEventHandler m_Events;
 	CPlayer *m_apPlayers[MAX_CLIENTS];
@@ -147,6 +170,7 @@ public:
 	void CreateSound(vec2 Pos, int Sound, int Mask=-1);
 	void CreateSoundGlobal(int Sound, int Target=-1);
 
+	void on_round_end (void);
 
 	enum
 	{

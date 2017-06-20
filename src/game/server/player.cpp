@@ -58,12 +58,14 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_ChatScore = 0;
 	m_TeamChangeTick = Server()->Tick();
 	gstats.join_time = time(NULL);
-	
+		
 	totals = read_statsfile(Server()->ClientName(m_ClientID), gstats.join_time);
 }
 
 CPlayer::~CPlayer()
 {
+	GameServer()->add_round_entry(gstats, Server()->ClientName(m_ClientID));
+
 	if (gstats.spree_max > totals.spree_max)
 		totals.spree_max = gstats.spree_max;
 	

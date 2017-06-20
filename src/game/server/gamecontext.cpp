@@ -546,7 +546,10 @@ void CGameContext::OnClientEnter(int ClientID)
 	}
 	else
 	{
-		str_format(aBuf, sizeof(aBuf), "'%s' entered and joined the %s", Server()->ClientName(ClientID), m_pController->GetTeamName(m_apPlayers[ClientID]->GetTeam()));
+		str_format(aBuf, sizeof(aBuf), "'%s' entered and joined the %s", 
+			Server()->ClientName(ClientID), 
+			m_pController->GetTeamName(m_apPlayers[ClientID]->GetTeam()));
+			//GameServer()->GetClientVersion(i));
 	}
 	SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 
@@ -624,8 +627,9 @@ double CGameContext::print_best_group_all (char *dst, double (*callback)(struct 
 	dp = opendir(STATS_DIR);
 	while ((ds = readdir(dp)))
 		if (*ds->d_name != '.') {
-			kd = callback(CPlayer::read_statsfile(ds->d_name, 0));
-			if ((kd > best) && (kd < max))
+			struct tee_stats tmp = CPlayer::read_statsfile(ds->d_name, 0);
+			kd = callback(tmp);
+			if ((kd > best) && (kd < max) && tmp.shots >= 5)
 				best = kd;
 		}
 	closedir(dp);
@@ -633,7 +637,8 @@ double CGameContext::print_best_group_all (char *dst, double (*callback)(struct 
 	dp = opendir(STATS_DIR);
 	while ((ds = readdir(dp)))
 		if (*ds->d_name != '.') {
-			if (callback(CPlayer::read_statsfile(ds->d_name, 0)) == best) {
+			struct tee_stats tmp = CPlayer::read_statsfile(ds->d_name, 0);
+			if (callback(tmp) == best && tmp.shots >= 5) {
 				if ((strlen(ds->d_name) + strlen(tmp_buf)) > sizeof(tmp_buf))
 					break;
 				strcat(tmp_buf, ds->d_name);
@@ -655,22 +660,28 @@ double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_
 	double kd = 0, best = 0;
 	char tmp_buf[128] = { 0 };
 	
-	for (i = 0; i < MAX_CLIENTS; i++) {
-		if (!m_apPlayers[i])
+	//for (i = 0; i < MAX_CLIENTS; i++) {
+	for (i = 0; i < round_index; i++) {
+		//if (!m_apPlayers[i])
+		if (!round_names[i][0])
 			continue;
-		kd = callback(m_apPlayers[i]->gstats);
+		//kd = callback(m_apPlayers[i]->gstats);
+		kd = callback(round_stats[i]);
 		if ((kd > best) && (kd < max))
 			best = kd;
 	}
-	for (i = 0; i < MAX_CLIENTS; i++) {
-		if (!m_apPlayers[i])
+	//for (i = 0; i < MAX_CLIENTS; i++) {
+	for (i = 0; i < round_index; i++) {
+		//if (!m_apPlayers[i])
+		if (!round_names[i][0])
 			continue;
-		kd = callback(m_apPlayers[i]->gstats);
-		int cid = m_apPlayers[i]->GetCID();
+		//kd = callback(m_apPlayers[i]->gstats);
+		kd = callback(round_stats[i]);
+	//	int cid = m_apPlayers[i]->GetCID();
 		if (kd == best) {
-			if (strlen(tmp_buf) + strlen(Server()->ClientName(cid)) > sizeof(tmp_buf))
+			if (strlen(tmp_buf) + strlen(round_names[i]) > sizeof(tmp_buf))
 				break;
-			strcat(tmp_buf, Server()->ClientName(cid));
+			strcat(tmp_buf, round_names[i]);
 			strcat(tmp_buf, ", ");
 		}
 	}
@@ -688,6 +699,7 @@ void CGameContext::print_best (int max, double (*callback)(struct tee_stats), in
 {
 	double tmp, best = PLACEHOLDER;
 	char buf[256];
+
 	while (max--) {
 		memset(buf, 0, sizeof(buf));
 		if (all)
@@ -740,6 +752,8 @@ void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *c
 		ct->multis[1] + ct->multis[2] + ct->multis[3] + ct->multis[4] + ct->multis[5]);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 
+/* ranks! */
+
 	if (ct->multis[0]) {
 		str_format(buf, sizeof(buf), "- ** double kills: %d", ct->multis[0]);
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
@@ -760,10 +774,106 @@ void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *c
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	}
 	
-	if (ct->is_bot) {
+	/*if (ct->is_bot) {
 		str_format(buf, sizeof(buf), "note: a player with this name has triggered the automatic aimbot detector");
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
+	}*/
+}
+
+void CGameContext::on_round_end (void)
+{
+	int i;
+	
+	SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
+	print_best(4, &CPlayer::get_kd, 0);
+	
+	SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
+	print_best(4, &CPlayer::get_max_spree, 0);
+	
+	SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
+	print_best(4, &CPlayer::get_accuracy, 0);
+	
+	for (i = 0; i < MAX_CLIENTS; i++) {
+		if (!m_apPlayers[i])
+			continue;
+		CPlayer *tmp = m_apPlayers[i];
+		if (round_stats[i].spree_max > tmp->totals.spree_max)
+			tmp->totals.spree_max = round_stats[i].spree_max;
+	
+		for (int j = 0; j < 6; j++)
+			tmp->totals.multis[j] += round_stats[j].multis[j];
+		
+		tmp->totals.kills += round_stats[i].kills;
+		tmp->totals.kills_x2 += round_stats[i].kills_x2;
+		tmp->totals.kills_wrong += round_stats[i].kills_wrong;
+		tmp->totals.deaths += round_stats[i].deaths;
+		tmp->totals.steals += round_stats[i].steals;
+		tmp->totals.suicides += round_stats[i].suicides;
+		tmp->totals.shots += round_stats[i].shots;
+		tmp->totals.freezes += round_stats[i].freezes;
+		tmp->totals.frozen += round_stats[i].frozen;
+		tmp->totals.hammers += round_stats[i].hammers;
+		tmp->totals.hammered += round_stats[i].hammered;
+		tmp->totals.teamhooks += round_stats[i].teamhooks;
+		tmp->totals.bounce_shots += round_stats[i].bounce_shots;
+		if (round_stats[i].is_bot)
+			tmp->totals.is_bot = 1;
+		tmp->totals.join_time += (time(NULL) - round_stats[i].join_time);
+	
+		tmp->totals.avg_ping = (unsigned short)((float)(round_stats[i].avg_ping + 
+						(float)(tmp->totals.num_samples * 
+						tmp->totals.avg_ping)) / 
+						(++tmp->totals.num_samples));
 	}
+	memset(round_stats, 0, sizeof(round_stats));
+	memset(round_names, 0, sizeof(round_names));
+	round_index = 0;
+	printf("round ended !\n");
+}
+
+void CGameContext::add_round_entry (struct tee_stats st, const char *name)
+{
+	int i;
+	
+	for (i = 0; i < 512; i++)
+		if (!strcmp(name, round_names[i]))
+			break;
+	if (i == 512)
+		i = round_index++;
+	if (i >= 512) {
+		printf("exceeded max round player entries!\n");
+		return;
+	}
+	
+	printf("adding round entry for %s (%d)\n", name, i);
+	
+	if (st.spree_max > round_stats[i].spree_max)
+		round_stats[i].spree_max = st.spree_max;
+	
+	for (int i = 0; i < 6; i++)
+		round_stats[i].multis[i] += st.multis[i];
+		
+	round_stats[i].kills += st.kills;
+	round_stats[i].kills_x2 += st.kills_x2;
+	round_stats[i].kills_wrong += st.kills_wrong;
+	round_stats[i].deaths += st.deaths;
+	round_stats[i].steals += st.steals;
+	round_stats[i].suicides += st.suicides;
+	round_stats[i].shots += st.shots;
+	round_stats[i].freezes += st.freezes;
+	round_stats[i].frozen += st.frozen;
+	round_stats[i].hammers += st.hammers;
+	round_stats[i].hammered += st.hammered;
+	round_stats[i].teamhooks += st.teamhooks;
+	round_stats[i].bounce_shots += st.bounce_shots;
+	if (st.is_bot)
+		round_stats[i].is_bot = 1;
+	round_stats[i].join_time += (time(NULL) - st.join_time);
+	
+	round_stats[i].avg_ping = (unsigned short)((float)(st.avg_ping + 
+					(float)(round_stats[i].num_samples * 
+					round_stats[i].avg_ping)) / 
+					(++round_stats[i].num_samples));
 }
 
 void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
@@ -888,8 +998,11 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				}
 			} else if (str_comp_num(pMsg->m_pMessage, "/top", 4) == 0) { 
 				int all = 0;
-				if (str_comp_num(pMsg->m_pMessage, "/topall", 7) == 0) 
+				if (str_comp_num(pMsg->m_pMessage, "/topall", 7) == 0) {
+					SendChat(-1, CGameContext::CHAT_ALL, 
+						"all-time stats (players with <5 shots fired not included)");
 					all = 1;
+				}
 				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
 				print_best(4, &CPlayer::get_kd, all);
 				
@@ -1310,7 +1423,23 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			pPlayer->gstats.suicides++;
 			pPlayer->KillCharacter(WEAPON_SELF);
 		}
-	}
+	} 
+	/*else if (MsgID == NETMSGTYPE_CL_ISDDNET)
+	{
+			int Version = pUnpacker->GetInt();
+
+			if (pUnpacker->Error())
+			{
+				if (pPlayer->m_ClientVersion < VERSION_DDRACE)
+					pPlayer->m_ClientVersion = VERSION_DDRACE;
+			}
+			else if(pPlayer->m_ClientVersion < Version)
+				pPlayer->m_ClientVersion = Version;
+			//tell known bot clients that they're botting and we know it
+			if (((Version >= 15 && Version < 100) || Version == 502) && g_Config.m_SvClientSuggestionBot[0] != '\0')
+				SendBroadcast(g_Config.m_SvClientSuggestionBot, ClientID);
+	}*/
+
 }
 
 void CGameContext::ConTuneParam(IConsole::IResult *pResult, void *pUserData)
