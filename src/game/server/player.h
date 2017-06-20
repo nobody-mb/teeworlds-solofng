@@ -57,6 +57,7 @@ public:
 	void KillCharacter(int Weapon = WEAPON_GAME);
 	CCharacter *GetCharacter();
 	
+	static double get_steals (struct tee_stats);
 	static double get_kd (struct tee_stats);
 	static double get_accuracy (struct tee_stats);
 	static double get_max_spree (struct tee_stats fstats);

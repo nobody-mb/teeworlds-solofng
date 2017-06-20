@@ -790,6 +790,9 @@ void CGameContext::on_round_end (void)
 	SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
 	print_best(4, &CPlayer::get_kd, 0);
 	
+	SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
+	print_best(4, &CPlayer::get_steals, 0);
+	
 	SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
 	print_best(4, &CPlayer::get_max_spree, 0);
 	
@@ -846,7 +849,7 @@ void CGameContext::on_round_end (void)
 		add_round_entry(tm, Server()->ClientName(tmp->GetCID()));
 	}
 			
-			
+	
 }
 
 struct tee_stats *CGameContext::find_round_entry (const char *name)
@@ -900,7 +903,6 @@ void CGameContext::add_round_entry (struct tee_stats st, const char *name)
 	if (st.is_bot)
 		round_stats[i].is_bot = 1;
 	round_stats[i].join_time += (time(NULL) - st.join_time);
-	
 	round_stats[i].avg_ping = (unsigned short)((float)(st.avg_ping + 
 					(float)(round_stats[i].num_samples * 
 					round_stats[i].avg_ping)) / 
@@ -1041,6 +1043,9 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				}
 				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
 				print_best(4, &CPlayer::get_kd, all);
+
+				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
+				print_best(4, &CPlayer::get_steals, all);
 				
 				SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
 				print_best(4, &CPlayer::get_max_spree, all);

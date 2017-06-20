@@ -343,6 +343,11 @@ double CPlayer::get_max_spree (struct tee_stats fstats)
 	return (double)fstats.spree_max;
 }
 
+double CPlayer::get_steals (struct tee_stats fstats)
+{
+	return (double)fstats.steals;
+}
+
 double CPlayer::get_kd (struct tee_stats fstats)
 {
 	int k = fstats.kills + fstats.kills_x2 + fstats.kills_wrong;
