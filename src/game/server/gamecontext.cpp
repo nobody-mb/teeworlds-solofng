@@ -555,6 +555,9 @@ void CGameContext::OnClientEnter(int ClientID)
 
 	str_format(aBuf, sizeof(aBuf), "team_join player='%d:%s' team=%d", ClientID, Server()->ClientName(ClientID), m_apPlayers[ClientID]->GetTeam());
 	Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
+	
+	struct tee_stats ts = { 0 };
+	add_round_entry(ts, Server()->ClientName(ClientID));
 
 	m_VoteUpdate = true;
 }
@@ -858,6 +861,8 @@ void CGameContext::add_round_entry (struct tee_stats st, const char *name)
 	
 	printf("adding round entry for %s (%d)\n", name, i);
 	
+	strcpy(round_names[i], name);
+	
 	if (st.spree_max > round_stats[i].spree_max)
 		round_stats[i].spree_max = st.spree_max;
 	
@@ -1006,9 +1011,11 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 						m_apPlayers[i]->GetCID())));
 					}
 				} else {
+					struct tee_stats *tmp = find_round_entry(Server()->
+						ClientName(ClientID));
+					printf("%p %s\n", tmp, Server()->ClientName(ClientID));
 					send_stats(Server()->ClientName(ClientID), 
-						ClientID, find_round_entry(Server()->
-						ClientName(ClientID)));
+						ClientID, tmp);
 				}
 			} else if (str_comp_num(pMsg->m_pMessage, "/top", 4) == 0) { 
 				int all = 0;

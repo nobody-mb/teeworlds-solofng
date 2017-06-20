@@ -288,19 +288,9 @@ void CGameControllerOpenFNG::HandleFreeze(int Killer, int Victim)
 		pVictim->Bleed(1);
 		GS->CreateSound(pVictim->m_Pos, SOUND_CTF_RETURN);
 	}
-	
-	struct tee_stats *s_killer = GameServer()->find_round_entry(Server()->
-			ClientName(Killer));
-	struct tee_stats *s_victim = GameServer()->find_round_entry(Server()->
-			ClientName(Victim));
-	if (!s_killer || !s_victim)
-		return;
 
 	int FailTeam = pVictim->GetPlayer()->GetTeam() & 1;
 	m_aTeamscore[1 - FailTeam] += CFG(FreezeTeamscore);
-	
-	s_victim->frozen++;
-	s_victim->frozeby = pPlKiller->GetCID();
 
 	if (CFG(FreezeTeamscore) && CFG(FreezeBroadcast)) //probably of no real use but for completeness...
 	{
@@ -316,8 +306,6 @@ void CGameControllerOpenFNG::HandleFreeze(int Killer, int Victim)
 	pPlKiller->m_Score += CFG(FreezeScore);
 	SendFreezeKill(Killer, Victim, WEAPON_RIFLE);
 
-	s_killer->freezes++;
-
 	if (pPlKiller->GetCharacter())
 	{
 		GS->CreateSound(pPlKiller->GetCharacter()->m_Pos, SOUND_HIT, (1<<pPlKiller->GetCID()));
@@ -328,6 +316,17 @@ void CGameControllerOpenFNG::HandleFreeze(int Killer, int Victim)
 			GS->CreateLolText(pPlKiller->GetCharacter(), false, vec2(0.f, -50.f), vec2(0.f, 0.f), 50, aBuf);
 		}
 	}
+	
+	
+	struct tee_stats *s_killer = GameServer()->find_round_entry(Server()->
+			ClientName(Killer));
+	struct tee_stats *s_victim = GameServer()->find_round_entry(Server()->
+			ClientName(Victim));
+	if (!s_killer || !s_victim)
+		return;
+	s_victim->frozen++;
+	s_victim->frozeby = pPlKiller->GetCID();
+	s_killer->freezes++;
 }
 
 void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
@@ -351,18 +350,10 @@ void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
 
 	CPlayer *pPlMelter = TPLAYER(Melter);
 	CPlayer *pPlMeltee = TPLAYER(Meltee);
-	
-	struct tee_stats *s_melter = GameServer()->find_round_entry(Server()->
-		ClientName(Melter));
-	struct tee_stats *s_meltee = GameServer()->find_round_entry(Server()->
-		ClientName(Meltee));
-
 
 	
-	if (!pPlMeltee || !s_melter || !s_meltee)
+	if (!pPlMeltee)
 		return;
-
-	s_meltee->frozeby = -1;
 
 	pPlMelter->m_Score += CFG(MeltScore);
 	SendFreezeKill(Melter, Meltee, WEAPON_HAMMER);
@@ -374,6 +365,14 @@ void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
 		GS->CreateLolText(pPlMelter->GetCharacter(), false, vec2(0.f, -50.f), vec2(0.f, 0.f), 50, aBuf);
 	}
 	
+	
+	struct tee_stats *s_melter = GameServer()->find_round_entry(Server()->
+		ClientName(Melter));
+	struct tee_stats *s_meltee = GameServer()->find_round_entry(Server()->
+		ClientName(Meltee));
+	if (!s_melter || !s_meltee)
+		return;
+	s_meltee->frozeby = -1;
 	s_melter->hammers++;
 	s_meltee->hammered++;
 }
@@ -413,13 +412,37 @@ void CGameControllerOpenFNG::HandleSacr(int Killer, int Victim, int ShrineTeam)
 	CPlayer *pPlVictim = TPLAYER(Victim);
 	if (!pPlKiller || !pPlVictim)
 		return;
+
+	pPlKiller->m_Score += Wrong?CFG(WrongSacrScore):(ShrineTeam == -1 ? CFG(SacrScore) : CFG(RightSacrScore));
+	SendFreezeKill(Killer, Victim, WEAPON_NINJA);
+
+	if (Wrong && pPlKiller->GetCharacter() && CFG(PunishWrongSacr))
+	{
+		pPlKiller->GetCharacter()->Freeze(CFG(PunishWrongSacr) * TS);
+		GS->CreateSound(pPlKiller->GetCharacter()->m_Pos, SOUND_PLAYER_PAIN_LONG);
+		GS->SendChatTarget(pPlKiller->GetCID(), "The gods are not pleased with this sacrifice!");
+	}
+
+	if (!Wrong && pPlKiller->GetCharacter())
+		pPlKiller->GetCharacter()->SetEmote(EMOTE_HAPPY, TICK + TS * 2);
+
+	if (pPlKiller->GetCharacter() && CFG(SacrLoltext) && ((!Wrong && CFG(SacrScore)) || (Wrong && CFG(WrongSacrScore))))
+	{
+		char aBuf[64];
+		str_format(aBuf, sizeof aBuf, "%+d", Wrong?CFG(WrongSacrScore):(ShrineTeam == -1 ? CFG(SacrScore) : CFG(RightSacrScore)));
+		GS->CreateLolText(pPlKiller->GetCharacter(), false, vec2(0.f, -50.f), vec2(0.f, 0.f), 50, aBuf);
+	}
+	
+	
 		
 	struct tee_stats *s_killer = GameServer()->find_round_entry(Server()->
 		ClientName(Killer));
 	struct tee_stats *s_victim = GameServer()->find_round_entry(Server()->
 		ClientName(Victim));
-	if (!s_killer || !s_victim)
-		return; 
+	if (!s_killer || !s_victim) {
+		printf("killer=%p victim=%p\n", s_killer, s_victim);
+		return;
+	}
 		
 	/* update stats */
 	//CCharacter *pKiller = CHAR(Killer);
@@ -474,26 +497,6 @@ void CGameControllerOpenFNG::HandleSacr(int Killer, int Victim, int ShrineTeam)
 	}
 	s_killer->lastkilltime = ttmp;
 	//}	
-
-	pPlKiller->m_Score += Wrong?CFG(WrongSacrScore):(ShrineTeam == -1 ? CFG(SacrScore) : CFG(RightSacrScore));
-	SendFreezeKill(Killer, Victim, WEAPON_NINJA);
-
-	if (Wrong && pPlKiller->GetCharacter() && CFG(PunishWrongSacr))
-	{
-		pPlKiller->GetCharacter()->Freeze(CFG(PunishWrongSacr) * TS);
-		GS->CreateSound(pPlKiller->GetCharacter()->m_Pos, SOUND_PLAYER_PAIN_LONG);
-		GS->SendChatTarget(pPlKiller->GetCID(), "The gods are not pleased with this sacrifice!");
-	}
-
-	if (!Wrong && pPlKiller->GetCharacter())
-		pPlKiller->GetCharacter()->SetEmote(EMOTE_HAPPY, TICK + TS * 2);
-
-	if (pPlKiller->GetCharacter() && CFG(SacrLoltext) && ((!Wrong && CFG(SacrScore)) || (Wrong && CFG(WrongSacrScore))))
-	{
-		char aBuf[64];
-		str_format(aBuf, sizeof aBuf, "%+d", Wrong?CFG(WrongSacrScore):(ShrineTeam == -1 ? CFG(SacrScore) : CFG(RightSacrScore)));
-		GS->CreateLolText(pPlKiller->GetCharacter(), false, vec2(0.f, -50.f), vec2(0.f, 0.f), 50, aBuf);
-	}
 }
 
 void CGameControllerOpenFNG::SendFreezeKill(int Killer, int Victim, int Weapon)
