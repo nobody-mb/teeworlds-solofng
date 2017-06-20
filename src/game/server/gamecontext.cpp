@@ -831,6 +831,17 @@ void CGameContext::on_round_end (void)
 	printf("round ended !\n");
 }
 
+struct tee_stats *CGameContext::find_round_entry (const char *name)
+{
+	int i;
+	
+	for (i = 0; i < 512; i++)
+		if (!strcmp(name, round_names[i]))
+			return &round_stats[i];
+			
+	return NULL;
+}
+
 void CGameContext::add_round_entry (struct tee_stats st, const char *name)
 {
 	int i;
@@ -1421,6 +1432,10 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			SendChatTarget(pPlayer->GetCID(), "You cannot commit suicide while being frozen!");
 		else {
 			pPlayer->gstats.suicides++;
+			struct tee_stats *tmp = find_round_entry(Server()->
+					ClientName(pPlayer->GetCID()));
+			if (tmp) 
+				tmp->suicides++;
 			pPlayer->KillCharacter(WEAPON_SELF);
 		}
 	} 

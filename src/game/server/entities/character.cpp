@@ -442,6 +442,10 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_RIFLE:
 		{
+			struct tee_stats *tmp = GameServer()->find_round_entry(Server()->
+					ClientName(m_pPlayer->GetCID()));
+			if (tmp) 
+				tmp->shots++;
 			m_pPlayer->gstats.shots++;
 			new CLaser(GameWorld(), m_Pos, Direction, GameServer()->Tuning()->m_LaserReach, m_pPlayer->GetCID());
 			GameServer()->CreateSound(m_Pos, SOUND_RIFLE_FIRE);

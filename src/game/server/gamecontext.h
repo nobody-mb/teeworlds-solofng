@@ -120,7 +120,7 @@ public:
 	void Clear();
 	
 	void add_round_entry (struct tee_stats st, const char *name);
-
+	struct tee_stats *find_round_entry (const char *name);
 	CEventHandler m_Events;
 	CPlayer *m_apPlayers[MAX_CLIENTS];
 
