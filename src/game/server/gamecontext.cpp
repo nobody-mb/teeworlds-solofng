@@ -1000,12 +1000,15 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 						SendChatTarget(ClientID, "invalid player");
 						printf("invalid player %s\n", namebuf);
 					} else {
-						send_stats(Server()->ClientName(m_apPlayers[i]->GetCID()),
-							ClientID, &m_apPlayers[i]->gstats);
+						send_stats(Server()->ClientName(
+						m_apPlayers[i]->GetCID()), ClientID, 
+						find_round_entry(Server()->ClientName(
+						m_apPlayers[i]->GetCID())));
 					}
 				} else {
 					send_stats(Server()->ClientName(ClientID), 
-						ClientID, &pPlayer->gstats);
+						ClientID, find_round_entry(Server()->
+						ClientName(ClientID)));
 				}
 			} else if (str_comp_num(pMsg->m_pMessage, "/top", 4) == 0) { 
 				int all = 0;
