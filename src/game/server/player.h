@@ -10,8 +10,6 @@
 
 
 #define STATS_DIR "stats"
-
-
 #ifndef TEE_STATS
 #define TEE_STATS
 struct tee_stats {
@@ -131,7 +129,7 @@ public:
 	int m_CampTick;
 	vec2 m_CampPos;
 
-	struct tee_stats gstats;
+	//struct tee_stats gstats;
 	struct tee_stats totals;
 	
 	bool GetBot(int BotType) { switch (BotType) {case 0: return m_SpinBot; case 1: return m_AimBot; default: return false;} }

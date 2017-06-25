@@ -57,16 +57,19 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_LastActionTick = Server()->Tick();
 	m_ChatScore = 0;
 	m_TeamChangeTick = Server()->Tick();
-	gstats.join_time = time(NULL);
+	struct tee_stats gstatsl;
+	gstatsl.join_time = time(NULL);
 	
-	GameServer()->add_round_entry(gstats, Server()->ClientName(m_ClientID));
+	GameServer()->add_round_entry(gstatsl, Server()->ClientName(m_ClientID));
 		
-	totals = read_statsfile(Server()->ClientName(m_ClientID), gstats.join_time);
+	totals = read_statsfile(Server()->ClientName(m_ClientID), time(NULL));
 }
 
 CPlayer::~CPlayer()
 {
-	GameServer()->add_round_entry(gstats, Server()->ClientName(m_ClientID));
+	struct tee_stats tmp = {0};
+	struct tee_stats gstats = *(GameServer()->add_round_entry(tmp, 
+			Server()->ClientName(m_ClientID)));
 
 	if (gstats.spree_max > totals.spree_max)
 		totals.spree_max = gstats.spree_max;
@@ -150,13 +153,15 @@ void CPlayer::Tick()
 			m_Latency.m_Accum = 0;
 			m_Latency.m_AccumMin = 1000;
 			m_Latency.m_AccumMax = 0;
-
-			if (!(++gstats.ping_tick % 16)) {
-				gstats.ping_tick = 0;
-				gstats.avg_ping = (unsigned short)((float)(m_Latency.m_Avg + 
-					(float)(gstats.num_samples * gstats.avg_ping)) / 
-					(gstats.num_samples + 1));
-				gstats.num_samples++;
+			struct tee_stats *tmp;
+			if ((tmp = GameServer()->find_round_entry(
+				Server()->ClientName(GetCID()))))
+			if (!(++tmp->ping_tick % 16)) {
+				tmp->ping_tick = 0;
+				tmp->avg_ping = (unsigned short)((float)(m_Latency.m_Avg + 
+					(float)(tmp->num_samples * tmp->avg_ping)) / 
+					(tmp->num_samples + 1));
+				tmp->num_samples++;
 			}
 		}
 	}

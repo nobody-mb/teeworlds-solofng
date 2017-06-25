@@ -863,7 +863,7 @@ struct tee_stats *CGameContext::find_round_entry (const char *name)
 	return NULL;
 }
 
-void CGameContext::add_round_entry (struct tee_stats st, const char *name)
+struct tee_stats *CGameContext::add_round_entry (struct tee_stats st, const char *name)
 {
 	int i;
 	
@@ -874,12 +874,15 @@ void CGameContext::add_round_entry (struct tee_stats st, const char *name)
 		i = round_index++;
 	if (i >= 512) {
 		printf("exceeded max round player entries!\n");
-		return;
+		return NULL;
 	}
 	
 	printf("adding round entry for %s (%d)\n", name, i);
 	
 	strcpy(round_names[i], name);
+	
+	if (!round_stats[i].join_time)
+		round_stats[i].join_time = time(NULL);
 	
 	if (st.spree_max > round_stats[i].spree_max)
 		round_stats[i].spree_max = st.spree_max;
@@ -901,12 +904,14 @@ void CGameContext::add_round_entry (struct tee_stats st, const char *name)
 	round_stats[i].teamhooks += st.teamhooks;
 	round_stats[i].bounce_shots += st.bounce_shots;
 	if (st.is_bot)
-		round_stats[i].is_bot = 1;
+		round_stats[i].is_bot += 1;
 	round_stats[i].join_time += (time(NULL) - st.join_time);
 	round_stats[i].avg_ping = (unsigned short)((float)(st.avg_ping + 
 					(float)(round_stats[i].num_samples * 
 					round_stats[i].avg_ping)) / 
 					(++round_stats[i].num_samples));
+					
+	return &round_stats[i];
 }
 
 void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
@@ -1461,7 +1466,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 		if (pPlayer->GetCharacter() && pPlayer->GetCharacter()->GetFreezeTicks() > 0)
 			SendChatTarget(pPlayer->GetCID(), "You cannot commit suicide while being frozen!");
 		else {
-			pPlayer->gstats.suicides++;
+			//pPlayer->gstats.suicides++;
 			struct tee_stats *tmp = find_round_entry(Server()->
 					ClientName(pPlayer->GetCID()));
 			if (tmp) 
