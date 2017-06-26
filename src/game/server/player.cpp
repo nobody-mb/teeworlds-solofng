@@ -57,7 +57,7 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_LastActionTick = Server()->Tick();
 	m_ChatScore = 0;
 	m_TeamChangeTick = Server()->Tick();
-	struct tee_stats gstatsl;
+	struct tee_stats gstatsl = { 0 };
 	gstatsl.join_time = time(NULL);
 	
 	GameServer()->add_round_entry(gstatsl, Server()->ClientName(m_ClientID));
