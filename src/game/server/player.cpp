@@ -11,6 +11,9 @@
 #include <fcntl.h>
 #include <time.h>
 
+#define ID_NAME(id) (Server()->ClientName(id))
+#define PLAYER_NUM(i) (GameServer()->m_apPlayers[i])
+
 MACRO_ALLOC_POOL_ID_IMPL(CPlayer, MAX_CLIENTS)
 
 IServer *CPlayer::Server() const { return m_pGameServer->Server(); }
@@ -57,58 +60,55 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_LastActionTick = Server()->Tick();
 	m_ChatScore = 0;
 	m_TeamChangeTick = Server()->Tick();
-	struct tee_stats gstatsl = { 0 };
-	gstatsl.join_time = time(NULL);
 	
-	GameServer()->add_round_entry(gstatsl, Server()->ClientName(m_ClientID));
-		
-	totals = read_statsfile(Server()->ClientName(m_ClientID), time(NULL));
+	totals = read_statsfile(ID_NAME(m_ClientID), time(NULL));
 }
 
 CPlayer::~CPlayer()
 {
-	struct tee_stats tmp = {0};
-	struct tee_stats gstats = *(GameServer()->add_round_entry(tmp, 
-			Server()->ClientName(m_ClientID)));
-
-	if (gstats.spree_max > totals.spree_max)
-		totals.spree_max = gstats.spree_max;
-	
-	for (int i = 0; i < 6; i++)
-		totals.multis[i] += gstats.multis[i];
-		
-	totals.kills += gstats.kills;
-	totals.kills_x2 += gstats.kills_x2;
-	totals.kills_wrong += gstats.kills_wrong;
-	totals.deaths += gstats.deaths;
-	totals.steals += gstats.steals;
-	totals.suicides += gstats.suicides;
-	totals.shots += gstats.shots;
-	totals.freezes += gstats.freezes;
-	totals.frozen += gstats.frozen;
-	totals.hammers += gstats.hammers;
-	totals.hammered += gstats.hammered;
-	totals.teamhooks += gstats.teamhooks;
-	totals.bounce_shots += gstats.bounce_shots;
-	if (gstats.is_bot)
-		totals.is_bot = 1;
-	totals.join_time += (time(NULL) - gstats.join_time);
-	
-	totals.avg_ping = (unsigned short)((float)(gstats.avg_ping + 
-					(float)(totals.num_samples * totals.avg_ping)) / 
-					(++totals.num_samples));
-	
+	struct tee_stats *gp;
 	char path[128];
 	int src_fd;
 	
-	snprintf(path, sizeof(path), "%s/%s", STATS_DIR, 
-		Server()->ClientName(GetCID()));
+	if (!(gp = GameServer()->find_round_entry(ID_NAME(m_ClientID)))) {
+		printf("couldnt find entry\n");
+		return;
+	}
+
+	if (gp->spree_max > totals.spree_max)
+		totals.spree_max = gp->spree_max;
+	
+	for (int i = 0; i < 6; i++)
+		totals.multis[i] += gp->multis[i];
+		
+	totals.kills 		+= gp->kills;
+	totals.kills_x2 	+= gp->kills_x2;
+	totals.kills_wrong 	+= gp->kills_wrong;
+	totals.deaths 		+= gp->deaths;
+	totals.steals 		+= gp->steals;
+	totals.suicides 	+= gp->suicides;
+	totals.shots 		+= gp->shots;
+	totals.freezes 		+= gp->freezes;
+	totals.frozen 		+= gp->frozen;
+	totals.hammers 		+= gp->hammers;
+	totals.hammered 	+= gp->hammered;
+	totals.teamhooks 	+= gp->teamhooks;
+	totals.bounce_shots 	+= gp->bounce_shots;
+	if (gp->is_bot)
+		totals.is_bot = 1;
+	totals.join_time += (time(NULL) - gp->join_time);
+	
+	totals.avg_ping = (unsigned short)((float)(gp->avg_ping + 
+					(float)(totals.num_samples * totals.avg_ping)) / 
+					(++totals.num_samples));
+
+	snprintf(path, sizeof(path), "%s/%s", STATS_DIR, ID_NAME(GetCID()));
 	if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
 		fprintf(stderr, "creating file\n");
 		if ((src_fd = open(path, O_WRONLY|O_CREAT, 0777)) < 0) {
 			fprintf(stderr, "error creating %s\n", path);
 			perror("a");
-			return;
+			return;	
 		}
 	}
 	
@@ -154,8 +154,7 @@ void CPlayer::Tick()
 			m_Latency.m_AccumMin = 1000;
 			m_Latency.m_AccumMax = 0;
 			struct tee_stats *tmp;
-			if ((tmp = GameServer()->find_round_entry(
-				Server()->ClientName(GetCID()))))
+			if ((tmp = GameServer()->find_round_entry(ID_NAME(GetCID()))))
 			if (!(++tmp->ping_tick % 16)) {
 				tmp->ping_tick = 0;
 				tmp->avg_ping = (unsigned short)((float)(m_Latency.m_Avg + 
@@ -206,8 +205,8 @@ void CPlayer::PostTick()
 	{
 		for(int i = 0; i < MAX_CLIENTS; ++i)
 		{
-			if(GameServer()->m_apPlayers[i] && GameServer()->m_apPlayers[i]->GetTeam() != TEAM_SPECTATORS)
-				m_aActLatency[i] = GameServer()->m_apPlayers[i]->m_Latency.m_Min;
+			if (PLAYER_NUM(i) && PLAYER_NUM(i)->GetTeam() != TEAM_SPECTATORS)
+				m_aActLatency[i] = PLAYER_NUM(i)->m_Latency.m_Min;
 		}
 	}
 
@@ -265,20 +264,21 @@ void CPlayer::OnDisconnect(const char *pReason)
 {
 	KillCharacter();
 	
+	if (!(Server()->ClientIngame(m_ClientID)))
+		return;
 	
+	char aBuf[512];
+	if(pReason && *pReason)
+		str_format(aBuf, sizeof(aBuf), "'%s' has left the game (%s)", 
+			ID_NAME(m_ClientID), pReason);
+	else
+		str_format(aBuf, sizeof(aBuf), "'%s' has left the game", ID_NAME(m_ClientID));
+	GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 
-	if(Server()->ClientIngame(m_ClientID))
-	{
-		char aBuf[512];
-		if(pReason && *pReason)
-			str_format(aBuf, sizeof(aBuf), "'%s' has left the game (%s)", Server()->ClientName(m_ClientID), pReason);
-		else
-			str_format(aBuf, sizeof(aBuf), "'%s' has left the game", Server()->ClientName(m_ClientID));
-		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
-
-		str_format(aBuf, sizeof(aBuf), "leave player='%d:%s'", m_ClientID, Server()->ClientName(m_ClientID));
-		GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
-	}
+	str_format(aBuf, sizeof(aBuf), "leave player='%d:%s'", 
+		m_ClientID, ID_NAME(m_ClientID));
+		
+	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
 }
 
 void CPlayer::OnPredictedInput(CNetObj_PlayerInput *NewInput)
@@ -413,8 +413,8 @@ void CPlayer::SetTeam(int Team, bool DoChatMsg)
 		// update spectator modes
 		for(int i = 0; i < MAX_CLIENTS; ++i)
 		{
-			if(GameServer()->m_apPlayers[i] && GameServer()->m_apPlayers[i]->m_SpectatorID == m_ClientID)
-				GameServer()->m_apPlayers[i]->m_SpectatorID = SPEC_FREEVIEW;
+			if (PLAYER_NUM(i) && PLAYER_NUM(i)->m_SpectatorID == m_ClientID)
+				PLAYER_NUM(i)->m_SpectatorID = SPEC_FREEVIEW;
 		}
 	}
 }

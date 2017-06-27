@@ -30,6 +30,7 @@
                                                             __func__,##ARGS)
 #endif
 
+#define ID_ENTRY(i) (GameServer()->find_round_entry(Server()->ClientName(i)))
 
 CGameControllerOpenFNG::CGameControllerOpenFNG(class CGameContext *pGameServer)
 : IGameController(pGameServer), m_ScoreDisplay(pGameServer), m_Broadcast(pGameServer)
@@ -208,8 +209,7 @@ void CGameControllerOpenFNG::DoInteractions()
 		{
 			m_aFrozenBy[i] = -1;
 			
-			struct tee_stats *s = GameServer()->find_round_entry(
-				Server()->ClientName(i));
+			struct tee_stats *s = ID_ENTRY(i);
 			if (s)
 				s->frozeby = -1;
 
@@ -318,10 +318,8 @@ void CGameControllerOpenFNG::HandleFreeze(int Killer, int Victim)
 	}
 	
 	
-	struct tee_stats *s_killer = GameServer()->find_round_entry(Server()->
-			ClientName(Killer));
-	struct tee_stats *s_victim = GameServer()->find_round_entry(Server()->
-			ClientName(Victim));
+	struct tee_stats *s_killer = ID_ENTRY(pPlKiller->GetCID());
+	struct tee_stats *s_victim = ID_ENTRY(pPlVictim->GetCID());
 	if (!s_killer || !s_victim)
 		return;
 	s_victim->frozen++;
@@ -365,11 +363,11 @@ void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
 		GS->CreateLolText(pPlMelter->GetCharacter(), false, vec2(0.f, -50.f), vec2(0.f, 0.f), 50, aBuf);
 	}
 	
+	if (!pPlMelter)
+		return;
 	
-	struct tee_stats *s_melter = GameServer()->find_round_entry(Server()->
-		ClientName(Melter));
-	struct tee_stats *s_meltee = GameServer()->find_round_entry(Server()->
-		ClientName(Meltee));
+	struct tee_stats *s_melter = ID_ENTRY(pPlMelter->GetCID());
+	struct tee_stats *s_meltee = ID_ENTRY(pPlMeltee->GetCID());
 	if (!s_melter || !s_meltee)
 		return;
 	s_meltee->frozeby = -1;
@@ -435,10 +433,8 @@ void CGameControllerOpenFNG::HandleSacr(int Killer, int Victim, int ShrineTeam)
 	
 	
 		
-	struct tee_stats *s_killer = GameServer()->find_round_entry(Server()->
-		ClientName(Killer));
-	struct tee_stats *s_victim = GameServer()->find_round_entry(Server()->
-		ClientName(Victim));
+	struct tee_stats *s_killer = ID_ENTRY(pPlKiller->GetCID());
+	struct tee_stats *s_victim = ID_ENTRY(pPlVictim->GetCID());
 	if (!s_killer || !s_victim) {
 		printf("killer=%p victim=%p\n", s_killer, s_victim);
 		return;

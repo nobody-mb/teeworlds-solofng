@@ -557,6 +557,7 @@ void CGameContext::OnClientEnter(int ClientID)
 	Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
 	
 	struct tee_stats ts = { 0 };
+	ts.join_time = time(NULL);
 	add_round_entry(ts, Server()->ClientName(ClientID));
 
 	m_VoteUpdate = true;
@@ -857,18 +858,21 @@ struct tee_stats *CGameContext::find_round_entry (const char *name)
 	int i;
 	
 	for (i = 0; i < 512; i++)
-		if (!strcmp(name, round_names[i]))
+		if (!strncmp(name, round_names[i], strlen(name)))
 			return &round_stats[i];
 			
 	return NULL;
 }
+
+#define ID_NAME(id) (Server()->ClientName(id))
+
 
 struct tee_stats *CGameContext::add_round_entry (struct tee_stats st, const char *name)
 {
 	int i;
 	
 	for (i = 0; i < 512; i++)
-		if (!strcmp(name, round_names[i]))
+		if (!strncmp(name, round_names[i], strlen(name)))
 			break;
 	if (i == 512)
 		i = round_index++;
@@ -1002,42 +1006,29 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					}
 				} else {
 					struct tee_stats tmp;
-					
-					tmp = CPlayer::read_statsfile(
-						Server()->ClientName(ClientID), 0);
-					send_stats(Server()->ClientName(ClientID), 
-						ClientID, &tmp);
+					tmp = CPlayer::read_statsfile(ID_NAME(ClientID), 0);
+					send_stats(ID_NAME(ClientID), ClientID, &tmp);
 				}
 			} else if (str_comp_num(pMsg->m_pMessage, "/stats", 6) == 0) {
 				if (strlen(pMsg->m_pMessage) > 7) {
 					char namebuf[64] = { 0 };
-					int i;
 					strcpy(namebuf, pMsg->m_pMessage + 7);
 					char *ptr = namebuf + strlen(namebuf) - 1;
 					if (*ptr == ' ')
 						*ptr = 0;
-					for (i = 0; i < MAX_CLIENTS; i++) {
-						if (!m_apPlayers[i])
-							continue;
-						if (!strcmp(namebuf, Server()->ClientName(
-							m_apPlayers[i]->GetCID())))
-							break;
-					}
-					if (i == MAX_CLIENTS) {
+					struct tee_stats *tmp;
+					tmp = find_round_entry(namebuf);
+					if (!tmp) {
 						SendChatTarget(ClientID, "invalid player");
 						printf("invalid player %s\n", namebuf);
 					} else {
-						send_stats(Server()->ClientName(
-						m_apPlayers[i]->GetCID()), ClientID, 
-						find_round_entry(Server()->ClientName(
-						m_apPlayers[i]->GetCID())));
+						send_stats(namebuf, ClientID, tmp);
 					}
 				} else {
-					struct tee_stats *tmp = find_round_entry(Server()->
-						ClientName(ClientID));
-					printf("%p %s\n", tmp, Server()->ClientName(ClientID));
-					send_stats(Server()->ClientName(ClientID), 
-						ClientID, tmp);
+					struct tee_stats *tmp;
+					tmp = find_round_entry(ID_NAME(ClientID));
+					if (tmp)
+						send_stats(ID_NAME(ClientID), ClientID, tmp);
 				}
 			} else if (str_comp_num(pMsg->m_pMessage, "/top", 4) == 0) { 
 				int all = 0;
