@@ -8,6 +8,8 @@
 #include "gamecontext.h"
 #include <time.h>
 
+#define ID_NAME(id) (Server()->ClientName(id))
+#define PLAYER_NUM(i) (GameServer()->m_apPlayers[i])
 
 #define STATS_DIR "stats"
 #ifndef TEE_STATS
@@ -32,7 +34,6 @@ class CPlayer
 	MACRO_ALLOC_POOL_ID()
 
 public:
-	static struct tee_stats read_statsfile (const char *name, time_t create);
 	CPlayer(CGameContext *pGameServer, int ClientID, int Team);
 	~CPlayer();
 
@@ -55,10 +56,6 @@ public:
 	void KillCharacter(int Weapon = WEAPON_GAME);
 	CCharacter *GetCharacter();
 	
-	static double get_steals (struct tee_stats);
-	static double get_kd (struct tee_stats);
-	static double get_accuracy (struct tee_stats);
-	static double get_max_spree (struct tee_stats fstats);
 	//---------------------------------------------------------
 	// this is used for snapping so we know how we can clip the view for the player
 	vec2 m_ViewPos;
@@ -130,7 +127,7 @@ public:
 	vec2 m_CampPos;
 
 	//struct tee_stats gstats;
-	struct tee_stats totals;
+	//struct tee_stats totals;
 	
 	bool GetBot(int BotType) { switch (BotType) {case 0: return m_SpinBot; case 1: return m_AimBot; default: return false;} }
 	void SetBot(int BotType) { switch (BotType) {case 0: m_SpinBot = true; break; case 1:m_AimBot = true; break;} }

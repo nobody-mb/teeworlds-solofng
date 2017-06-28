@@ -11,41 +11,9 @@
 #include <fcntl.h>
 #include <time.h>
 
-#define ID_NAME(id) (Server()->ClientName(id))
-#define PLAYER_NUM(i) (GameServer()->m_apPlayers[i])
-
 MACRO_ALLOC_POOL_ID_IMPL(CPlayer, MAX_CLIENTS)
 
 IServer *CPlayer::Server() const { return m_pGameServer->Server(); }
-
-struct tee_stats CPlayer::read_statsfile (const char *name, time_t create)
-{
-	char path[128];
-	int src_fd;
-	struct tee_stats ret;
-	
-	memset(&ret, 0, sizeof(ret));
-	
-	snprintf(path, sizeof(path), "%s/%s", STATS_DIR, name);
-	if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
-		if (create) {
-			fprintf(stderr, "creating file\n");
-			if ((src_fd = open(path, O_WRONLY|O_CREAT, 0777)) < 0) {
-				fprintf(stderr, "error creating file %s\n", path);
-				return ret;
-			}
-			ret.join_time = create;
-			write(src_fd, &ret, sizeof(ret));
-		}
-	} else {
-		if (read(src_fd, &ret, sizeof(ret)) != sizeof(ret)) {
-			fprintf(stderr, "didnt read enough data\n");
-		}
-	}
-	close(src_fd);
-
-	return ret;
-}
 
 CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 {
@@ -60,61 +28,10 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_LastActionTick = Server()->Tick();
 	m_ChatScore = 0;
 	m_TeamChangeTick = Server()->Tick();
-	
-	totals = read_statsfile(ID_NAME(m_ClientID), time(NULL));
 }
 
 CPlayer::~CPlayer()
 {
-	struct tee_stats *gp;
-	char path[128];
-	int src_fd;
-	
-	if (!(gp = GameServer()->find_round_entry(ID_NAME(m_ClientID)))) {
-		printf("couldnt find entry\n");
-		return;
-	}
-
-	if (gp->spree_max > totals.spree_max)
-		totals.spree_max = gp->spree_max;
-	
-	for (int i = 0; i < 6; i++)
-		totals.multis[i] += gp->multis[i];
-		
-	totals.kills 		+= gp->kills;
-	totals.kills_x2 	+= gp->kills_x2;
-	totals.kills_wrong 	+= gp->kills_wrong;
-	totals.deaths 		+= gp->deaths;
-	totals.steals 		+= gp->steals;
-	totals.suicides 	+= gp->suicides;
-	totals.shots 		+= gp->shots;
-	totals.freezes 		+= gp->freezes;
-	totals.frozen 		+= gp->frozen;
-	totals.hammers 		+= gp->hammers;
-	totals.hammered 	+= gp->hammered;
-	totals.teamhooks 	+= gp->teamhooks;
-	totals.bounce_shots 	+= gp->bounce_shots;
-	if (gp->is_bot)
-		totals.is_bot = 1;
-	totals.join_time += (time(NULL) - gp->join_time);
-	
-	totals.avg_ping = (unsigned short)((float)(gp->avg_ping + 
-					(float)(totals.num_samples * totals.avg_ping)) / 
-					(++totals.num_samples));
-
-	snprintf(path, sizeof(path), "%s/%s", STATS_DIR, ID_NAME(GetCID()));
-	if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
-		fprintf(stderr, "creating file\n");
-		if ((src_fd = open(path, O_WRONLY|O_CREAT, 0777)) < 0) {
-			fprintf(stderr, "error creating %s\n", path);
-			perror("a");
-			return;	
-		}
-	}
-	
-	write(src_fd, &totals, sizeof(totals));
-	close(src_fd);
-	
 	delete m_pCharacter;
 	m_pCharacter = 0;
 }
@@ -341,32 +258,6 @@ void CPlayer::KillCharacter(int Weapon)
 		delete m_pCharacter;
 		m_pCharacter = 0;
 	}
-}
-
-double CPlayer::get_max_spree (struct tee_stats fstats)
-{
-	return (double)fstats.spree_max;
-}
-
-double CPlayer::get_steals (struct tee_stats fstats)
-{
-	return (double)fstats.steals;
-}
-
-double CPlayer::get_kd (struct tee_stats fstats)
-{
-	int k = fstats.kills + fstats.kills_x2 + fstats.kills_wrong;
-	int d = fstats.deaths ? fstats.deaths : 1;
-	return (double)k / (double)d;
-}
-
-double CPlayer::get_accuracy (struct tee_stats fstats)
-{
-	if (fstats.shots < 2)
-		return 0.0f;
-		
-	int d = fstats.shots ? fstats.shots : 1;
-	return (double)fstats.freezes / (double)d;
 }
 
 void CPlayer::Respawn()

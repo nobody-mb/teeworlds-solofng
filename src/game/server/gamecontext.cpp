@@ -54,6 +54,9 @@ void CGameContext::Construct(int Resetting)
 
 CGameContext::CGameContext(int Resetting)
 {
+	memset(round_stats, 0, sizeof(round_stats));
+	memset(round_names, 0, sizeof(round_names));
+	
 	Construct(Resetting);
 }
 
@@ -556,7 +559,8 @@ void CGameContext::OnClientEnter(int ClientID)
 	str_format(aBuf, sizeof(aBuf), "team_join player='%d:%s' team=%d", ClientID, Server()->ClientName(ClientID), m_apPlayers[ClientID]->GetTeam());
 	Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
 	
-	struct tee_stats ts = { 0 };
+	struct tee_stats ts;
+	memset(&ts, 0, sizeof(ts));
 	ts.join_time = time(NULL);
 	add_round_entry(ts, Server()->ClientName(ClientID));
 
@@ -631,7 +635,7 @@ double CGameContext::print_best_group_all (char *dst, double (*callback)(struct 
 	dp = opendir(STATS_DIR);
 	while ((ds = readdir(dp)))
 		if (*ds->d_name != '.') {
-			struct tee_stats tmp = CPlayer::read_statsfile(ds->d_name, 0);
+			struct tee_stats tmp = read_statsfile(ds->d_name, 0);
 			kd = callback(tmp);
 			if ((kd > best) && (kd < max) && tmp.shots >= 5)
 				best = kd;
@@ -641,8 +645,8 @@ double CGameContext::print_best_group_all (char *dst, double (*callback)(struct 
 	dp = opendir(STATS_DIR);
 	while ((ds = readdir(dp)))
 		if (*ds->d_name != '.') {
-			struct tee_stats tmp = CPlayer::read_statsfile(ds->d_name, 0);
-			if (callback(tmp) == best && tmp.shots >= 5) {
+			struct tee_stats tmp = read_statsfile(ds->d_name, 0);
+			if (callback(tmp) == best && tmp.shots >= 10) {
 				if ((strlen(ds->d_name) + strlen(tmp_buf)) > sizeof(tmp_buf))
 					break;
 				strcat(tmp_buf, ds->d_name);
@@ -664,24 +668,17 @@ double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_
 	double kd = 0, best = 0;
 	char tmp_buf[128] = { 0 };
 	
-	//for (i = 0; i < MAX_CLIENTS; i++) {
 	for (i = 0; i < round_index; i++) {
-		//if (!m_apPlayers[i])
 		if (!round_names[i][0])
 			continue;
-		//kd = callback(m_apPlayers[i]->gstats);
 		kd = callback(round_stats[i]);
 		if ((kd > best) && (kd < max))
 			best = kd;
 	}
-	//for (i = 0; i < MAX_CLIENTS; i++) {
 	for (i = 0; i < round_index; i++) {
-		//if (!m_apPlayers[i])
 		if (!round_names[i][0])
 			continue;
-		//kd = callback(m_apPlayers[i]->gstats);
 		kd = callback(round_stats[i]);
-	//	int cid = m_apPlayers[i]->GetCID();
 		if (kd == best) {
 			if (strlen(tmp_buf) + strlen(round_names[i]) > sizeof(tmp_buf))
 				break;
@@ -783,58 +780,129 @@ void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *c
 		SendChat(-1, CGameContext::CHAT_ALL, buf);
 	}*/
 }
+struct tee_stats CGameContext::read_statsfile (const char *name, time_t create)
+{
+	char path[128];
+	int src_fd;
+	struct tee_stats ret;
+	
+	memset(&ret, 0, sizeof(ret));
+	
+	snprintf(path, sizeof(path), "%s/%s", STATS_DIR, name);
+	if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
+		if (create) {
+			fprintf(stderr, "creating file\n");
+			if ((src_fd = open(path, O_WRONLY|O_CREAT, 0777)) < 0) {
+				fprintf(stderr, "error creating file %s\n", path);
+				return ret;
+			}
+			ret.join_time = create;
+			write(src_fd, &ret, sizeof(ret));
+		}
+	} else {
+		if (read(src_fd, &ret, sizeof(ret)) != sizeof(ret)) {
+			fprintf(stderr, "didnt read enough data\n");
+		}
+	}
+	close(src_fd);
+
+	return ret;
+}
+
+
+double CGameContext::get_max_spree (struct tee_stats fstats)
+{
+	return (double)fstats.spree_max;
+}
+
+double CGameContext::get_steals (struct tee_stats fstats)
+{
+	return (double)fstats.steals;
+}
+
+double CGameContext::get_kd (struct tee_stats fstats)
+{
+	int k = fstats.kills + fstats.kills_x2 + fstats.kills_wrong;
+	int d = fstats.deaths ? fstats.deaths : 1;
+	return (double)k / (double)d;
+}
+
+double CGameContext::get_accuracy (struct tee_stats fstats)
+{
+	if (fstats.shots < 2)
+		return 0.0f;
+		
+	int d = fstats.shots ? fstats.shots : 1;
+	return (double)fstats.freezes / (double)d;
+}
+
 
 void CGameContext::on_round_end (void)
 {
-	int i;
+	int i, src_fd;
+	struct tee_stats *tp, totals;
+	char path[128];
 	
 	SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
-	print_best(4, &CPlayer::get_kd, 0);
+	print_best(4, &get_kd, 0);
 	
 	SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
-	print_best(4, &CPlayer::get_steals, 0);
+	print_best(4, &get_steals, 0);
 	
 	SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
-	print_best(4, &CPlayer::get_max_spree, 0);
+	print_best(4, &get_max_spree, 0);
 	
 	SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
-	print_best(4, &CPlayer::get_accuracy, 0);
+	print_best(4, &get_accuracy, 0);
 	
-	for (i = 0; i < MAX_CLIENTS; i++) {
-		if (!m_apPlayers[i])
+	for (i = 0; i < round_index; i++) {
+		//if (!(tmp = m_apPlayers[i]) || !(tp = PLAYER_ENTRY(tmp)))
+		//	continue;
+		tp = &round_stats[i];
+		if (!tp->join_time)
 			continue;
-		CPlayer *tmp = m_apPlayers[i];
-		struct tee_stats *tp = find_round_entry(Server()->ClientName(tmp->GetCID()));
-		if (!tp)
-			continue;
-			
-		if (tp->spree_max > tmp->totals.spree_max)
-			tmp->totals.spree_max = tp->spree_max;
+		memset(&totals, 0, sizeof(totals));
+		totals = read_statsfile(round_names[i], time(NULL));
+
+		if (tp->spree_max > totals.spree_max)
+			totals.spree_max = tp->spree_max;
 	
 		for (int j = 0; j < 6; j++)
-			tmp->totals.multis[j] += tp->multis[j];
+			totals.multis[j] += tp->multis[j];
 		
-		tmp->totals.kills += tp->kills;
-		tmp->totals.kills_x2 += tp->kills_x2;
-		tmp->totals.kills_wrong += tp->kills_wrong;
-		tmp->totals.deaths += tp->deaths;
-		tmp->totals.steals += tp->steals;
-		tmp->totals.suicides += tp->suicides;
-		tmp->totals.shots += tp->shots;
-		tmp->totals.freezes += tp->freezes;
-		tmp->totals.frozen += tp->frozen;
-		tmp->totals.hammers += tp->hammers;
-		tmp->totals.hammered += tp->hammered;
-		tmp->totals.teamhooks += tp->teamhooks;
-		tmp->totals.bounce_shots += tp->bounce_shots;
+		totals.kills += tp->kills;
+		totals.kills_x2 += tp->kills_x2;
+		totals.kills_wrong += tp->kills_wrong;
+		totals.deaths += tp->deaths;
+		totals.steals += tp->steals;
+		totals.suicides += tp->suicides;
+		totals.shots += tp->shots;
+		totals.freezes += tp->freezes;
+		totals.frozen += tp->frozen;
+		totals.hammers += tp->hammers;
+		totals.hammered += tp->hammered;
+		totals.teamhooks += tp->teamhooks;
+		totals.bounce_shots += tp->bounce_shots;
 		if (tp->is_bot)
-			tmp->totals.is_bot = 1;
-		tmp->totals.join_time += (time(NULL) - tp->join_time);
+			totals.is_bot = 1;
+		totals.join_time += (time(NULL) - tp->join_time);
+		totals.avg_ping = (unsigned short)((float)(tp->avg_ping + 
+						(float)(totals.num_samples * 
+						totals.avg_ping)) / 
+						(++totals.num_samples));
+						
+		snprintf(path, sizeof(path), "%s/%s", STATS_DIR, round_names[i]);
+		if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
+			fprintf(stderr, "creating file\n");
+			if ((src_fd = open(path, O_WRONLY|O_CREAT, 0777)) < 0) {
+				fprintf(stderr, "error creating %s\n", path);
+				perror("a");
+				continue;	
+			}
+		}
 	
-		tmp->totals.avg_ping = (unsigned short)((float)(tp->avg_ping + 
-						(float)(tmp->totals.num_samples * 
-						tmp->totals.avg_ping)) / 
-						(++tmp->totals.num_samples));
+		write(src_fd, &totals, sizeof(totals));
+		close(src_fd);
 	}
 	memset(round_stats, 0, sizeof(round_stats));
 	memset(round_names, 0, sizeof(round_names));
@@ -842,15 +910,12 @@ void CGameContext::on_round_end (void)
 	printf("round ended !\n");
 	
 	for (i = 0; i < MAX_CLIENTS; i++) {
-		struct tee_stats tm = { 0 };
-		tm.join_time = time(NULL);
+		memset(&totals, 0, sizeof(totals));
+		totals.join_time = time(NULL);
 		if (!m_apPlayers[i])
 			continue;
-		CPlayer *tmp = m_apPlayers[i];
-		add_round_entry(tm, Server()->ClientName(tmp->GetCID()));
+		add_round_entry(totals, ID_NAME(m_apPlayers[i]->GetCID()));
 	}
-			
-	
 }
 
 struct tee_stats *CGameContext::find_round_entry (const char *name)
@@ -997,7 +1062,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 						*ptr = 0;
 					struct tee_stats tmp;
 					
-					tmp = CPlayer::read_statsfile(namebuf, 0);
+					tmp = read_statsfile(namebuf, 0);
 					if (!tmp.join_time) {										
 						SendChatTarget(ClientID, "invalid player");
 						printf("invalid player %s\n", namebuf);
@@ -1006,7 +1071,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					}
 				} else {
 					struct tee_stats tmp;
-					tmp = CPlayer::read_statsfile(ID_NAME(ClientID), 0);
+					tmp = read_statsfile(ID_NAME(ClientID), 0);
 					send_stats(ID_NAME(ClientID), ClientID, &tmp);
 				}
 			} else if (str_comp_num(pMsg->m_pMessage, "/stats", 6) == 0) {
@@ -1034,20 +1099,20 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				int all = 0;
 				if (str_comp_num(pMsg->m_pMessage, "/topall", 7) == 0) {
 					SendChat(-1, CGameContext::CHAT_ALL, 
-						"all-time stats (players with <5 shots fired not included)");
+						"all-time stats (players with <10 shots fired not included)");
 					all = 1;
 				}
 				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
-				print_best(4, &CPlayer::get_kd, all);
+				print_best(4, &get_kd, all);
 
 				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
-				print_best(4, &CPlayer::get_steals, all);
+				print_best(4, &get_steals, all);
 				
 				SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
-				print_best(4, &CPlayer::get_max_spree, all);
+				print_best(4, &get_max_spree, all);
 				
 				SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
-				print_best(4, &CPlayer::get_accuracy, all);
+				print_best(4, &get_accuracy, all);
 			} 
 		}
 		else
@@ -1455,11 +1520,13 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 		//openfng disallows killing while frozen
 		if (pPlayer->GetCharacter() && pPlayer->GetCharacter()->GetFreezeTicks() > 0)
-			SendChatTarget(pPlayer->GetCID(), "You cannot commit suicide while being frozen!");
+			SendChatTarget(pPlayer->GetCID(), 
+				"You cannot commit suicide while being frozen!");
 		else {
 			//pPlayer->gstats.suicides++;
-			struct tee_stats *tmp = find_round_entry(Server()->
-					ClientName(pPlayer->GetCID()));
+			struct tee_stats *tmp = PLAYER_ENTRY(pPlayer);
+			//find_round_entry(Server()->
+					//ClientName(pPlayer->GetCID()));
 			if (tmp) 
 				tmp->suicides++;
 			pPlayer->KillCharacter(WEAPON_SELF);

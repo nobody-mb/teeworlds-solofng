@@ -54,6 +54,10 @@ struct tee_stats {
 	};
 #endif
 
+#define PLAYER_ENTRY(pPlayer) (find_round_entry(Server()->ClientName(pPlayer->GetCID())))
+#define ID_NAME(id) (Server()->ClientName(id))
+#define PLAYER_NUM(i) (GameServer()->m_apPlayers[i])
+
 struct CMute {
 	char m_IP[16];// TODO ipv6
 	int m_Expire;
@@ -100,7 +104,14 @@ class CGameContext : public IGameServer
 	void send_stats (const char *name, int req_by, struct tee_stats *ct);
 	void print_best (int max, double (*callback)(struct tee_stats), int all);
 	double print_best_group (char *dst, double (*callback)(struct tee_stats), double max);
-double print_best_group_all (char *dst, double (*callback)(struct tee_stats), double max);
+	double print_best_group_all (char *dst, double (*callback)(struct tee_stats), 
+		double max);
+	static struct tee_stats read_statsfile (const char *name, time_t create);
+	static double get_steals (struct tee_stats);
+	static double get_kd (struct tee_stats);
+	static double get_accuracy (struct tee_stats);
+	static double get_max_spree (struct tee_stats fstats);
+
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
 	
