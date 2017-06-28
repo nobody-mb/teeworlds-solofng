@@ -637,7 +637,7 @@ double CGameContext::print_best_group_all (char *dst, double (*callback)(struct 
 		if (*ds->d_name != '.') {
 			struct tee_stats tmp = read_statsfile(ds->d_name, 0);
 			kd = callback(tmp);
-			if ((kd > best) && (kd < max) && tmp.shots >= 5)
+			if ((kd > best) && (kd < max) && tmp.shots >= 10)
 				best = kd;
 		}
 	closedir(dp);
