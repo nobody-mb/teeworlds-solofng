@@ -679,15 +679,23 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 		if (TarPosLength > 634 && !m_pPlayer->GetBot(1))
 		{
 			m_pPlayer->SetBot(1);
-			str_format(aBuf, sizeof(aBuf), "%s is AimBot(Invaild Mouse Pos)",Server()->ClientName(m_pPlayer->GetCID()));
+			str_format(aBuf, sizeof(aBuf), 
+				"%s is AimBot(Invaild Mouse Pos len %f dist %f)", 
+				Server()->ClientName(m_pPlayer->GetCID()), TarPosLength,
+					 TravelDis);
 			GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 		}
 	}
-for (int i = 0; i < Num; ++i)
+	for (int i = 0; i < Num; ++i)
 	{
 		if (aEnts[i] == this)
  			continue;
  		float CheckAimDis = distance(m_Pos + TarPos, aEnts[i]->m_Pos);
+  		/*str_format(aBuf, sizeof(aBuf), "dist %s to %s = %f, tpl = %f, td = %f\n", 
+  			ID_NAME(m_pPlayer->GetCID()), 
+ 			ID_NAME(aEnts[i]->m_pPlayer->GetCID()), 
+ 			CheckAimDis,TarPosLength, TravelDis);
+ 		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);*/
  		if (CheckAimDis < 1)
  			m_ABAimAcTime ++;
  		else
@@ -711,7 +719,8 @@ for (int i = 0; i < Num; ++i)
  	if ((m_ABSpinTime == 10) && !m_pPlayer->GetBot(0))
 	{
 		m_pPlayer->SetBot(0);
-		str_format(aBuf, sizeof(aBuf), "%s is spinning (%.2f)",Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
+		str_format(aBuf, sizeof(aBuf), "%s is spinning (%.2f)", 
+			Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
 		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
 	}
 	
@@ -719,13 +728,15 @@ for (int i = 0; i < Num; ++i)
 	if ((m_ABAimAcTime == 5) && !m_pPlayer->GetBot(1))
  	{
  		m_pPlayer->SetBot(1);
- 		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Position matching)",Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
+ 		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Position matching)", 
+ 			Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
  		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
  	}
  	if ((m_ABAimTime == 10) && !m_pPlayer->GetBot(1))
  	{
  		m_pPlayer->SetBot(1);
- 		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Similar behavior)",Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
+ 		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Similar behavior)", 
+ 			Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
   		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
   	}
 	

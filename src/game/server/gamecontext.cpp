@@ -637,7 +637,7 @@ double CGameContext::print_best_group_all (char *dst, double (*callback)(struct 
 		if (*ds->d_name != '.') {
 			struct tee_stats tmp = read_statsfile(ds->d_name, 0);
 			kd = callback(tmp);
-			if ((kd > best) && (kd < max) && tmp.shots >= 5)
+			if ((kd > best) && (kd < max) && tmp.shots >= 10)
 				best = kd;
 		}
 	closedir(dp);
@@ -1532,21 +1532,18 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			pPlayer->KillCharacter(WEAPON_SELF);
 		}
 	} 
-	/*else if (MsgID == NETMSGTYPE_CL_ISDDNET)
+	else if (MsgID == 26 || MsgID == 31) //NETMSGTYPE_CL_ISDDNET)
 	{
-			int Version = pUnpacker->GetInt();
+		int Version = pUnpacker->GetInt();
 
-			if (pUnpacker->Error())
-			{
-				if (pPlayer->m_ClientVersion < VERSION_DDRACE)
-					pPlayer->m_ClientVersion = VERSION_DDRACE;
-			}
-			else if(pPlayer->m_ClientVersion < Version)
-				pPlayer->m_ClientVersion = Version;
-			//tell known bot clients that they're botting and we know it
-			if (((Version >= 15 && Version < 100) || Version == 502) && g_Config.m_SvClientSuggestionBot[0] != '\0')
-				SendBroadcast(g_Config.m_SvClientSuggestionBot, ClientID);
-	}*/
+		if (pUnpacker->Error()) {
+			printf("error getting next int (%d)\n", Version);
+		} else {
+			printf("id = %d | v = %d\n", MsgID, Version);
+			if (((Version >= 15 && Version < 100) || Version == 502))
+				printf("suspect bot client\n");
+		}
+	}
 
 }
 

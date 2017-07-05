@@ -316,15 +316,14 @@ void CGameControllerOpenFNG::HandleFreeze(int Killer, int Victim)
 			GS->CreateLolText(pPlKiller->GetCharacter(), false, vec2(0.f, -50.f), vec2(0.f, 0.f), 50, aBuf);
 		}
 	}
-	
-	
-	struct tee_stats *s_killer = ID_ENTRY(pPlKiller->GetCID());
+		
+/*	struct tee_stats *s_killer = ID_ENTRY(pPlKiller->GetCID());
 	struct tee_stats *s_victim = ID_ENTRY(pPlVictim->GetCID());
 	if (!s_killer || !s_victim)
 		return;
 	s_victim->frozen++;
 	s_victim->frozeby = pPlKiller->GetCID();
-	s_killer->freezes++;
+	s_killer->freezes++;*/
 }
 
 void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)

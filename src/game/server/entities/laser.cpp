@@ -57,13 +57,22 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 	    OwnerChar->GetPlayer()->GetTeam() != Hit->GetPlayer()->GetTeam())) && 
 	    (Hit->GetFreezeTicks() <= 0 && 
 	    Hit->GetMeltTick() + g_Config.m_SvMeltSafeticks < Server()->Tick())) {
-		if (m_Bounces){
-			struct tee_stats *tmp = GameServer()->find_round_entry(
-				Server()->ClientName(OwnerChar->GetPlayer()->GetCID()));
-			if (tmp)
-		    		tmp->bounce_shots++;
+		Hit->Freeze(GameServer()->Tuning()->m_LaserDamage * Server()->TickSpeed(), 
+			m_Owner);
+
+		int oid = OwnerChar->GetPlayer()->GetCID();
+		struct tee_stats *o = GameServer()->find_round_entry(Server()->
+			ClientName(oid));
+		struct tee_stats *v = GameServer()->find_round_entry(Server()->
+			ClientName(Hit->GetPlayer()->GetCID()));
+		
+		if (o && v) {
+			if (m_Bounces)
+		    		o->bounce_shots++;
+		    	v->frozen++;
+			v->frozeby = oid;
+			o->freezes++;
 		}
-		Hit->Freeze(GameServer()->Tuning()->m_LaserDamage * Server()->TickSpeed(), m_Owner);
 	}
 
 
