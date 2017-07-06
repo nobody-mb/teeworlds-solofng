@@ -870,6 +870,7 @@ void CGameContext::on_round_end (void)
 		for (int j = 0; j < 6; j++)
 			totals.multis[j] += tp->multis[j];
 		
+		totals.num_games++;
 		totals.kills += tp->kills;
 		totals.kills_x2 += tp->kills_x2;
 		totals.kills_wrong += tp->kills_wrong;
@@ -1098,8 +1099,11 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			} else if (str_comp_num(pMsg->m_pMessage, "/top", 4) == 0) { 
 				int all = 0;
 				if (str_comp_num(pMsg->m_pMessage, "/topall", 7) == 0) {
-					SendChat(-1, CGameContext::CHAT_ALL, 
-						"all-time stats (players with <10 shots fired not included)");
+					char mg[128] = { 0 };
+					snprintf(mg, sizeof(mg), "all-time stats"
+			" (players with <10 shots fired not included) req by %s", 
+			Server()->ClientName(ClientID));
+					SendChat(-1, CGameContext::CHAT_ALL, mg);
 					all = 1;
 				}
 				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");

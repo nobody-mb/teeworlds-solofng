@@ -51,6 +51,7 @@ struct tee_stats {
 		unsigned char ping_tick, is_bot;
 		int bounce_shots, tick_count;
 		time_t join_time;
+		int num_games;
 	};
 #endif
 

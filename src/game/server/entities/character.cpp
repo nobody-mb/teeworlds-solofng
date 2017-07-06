@@ -662,6 +662,10 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 	//vec2 TarPos = vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY);
 	float TarPosLength = length(TarPos);
 	float TravelDis = distance(m_ABSpinPos,TarPos);
+	
+	m_last_travel_dist = TravelDis;
+	m_last_tarposlen = TarPosLength;
+	
 	if (TarPosLength < 398 || (TarPosLength > 401 && TarPosLength < 632))
 	{
 		if (TravelDis > 50)

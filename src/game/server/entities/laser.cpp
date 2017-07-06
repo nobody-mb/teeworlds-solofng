@@ -5,6 +5,8 @@
 #include <game/server/gamecontext.h>
 #include "laser.h"
 
+#include <stdio.h>
+
 CLaser::CLaser(CGameWorld *pGameWorld, vec2 Pos, vec2 Direction, float StartEnergy, int Owner)
 : CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER)
 {
@@ -65,6 +67,12 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 			ClientName(oid));
 		struct tee_stats *v = GameServer()->find_round_entry(Server()->
 			ClientName(Hit->GetPlayer()->GetCID()));
+			
+		float d = OwnerChar->m_last_travel_dist;
+		float l = OwnerChar->m_last_tarposlen;
+		
+		printf("%s froze! dist = %f len = %f\n", Server()->
+			ClientName(oid), d, l);
 		
 		if (o && v) {
 			if (m_Bounces)

@@ -79,6 +79,9 @@ public:
 	int LastHammeredBy() { return m_HammeredBy; }
 	void ClearLastHammeredBy() { m_HammeredBy = -1; } 
 	
+	float m_last_travel_dist;
+	float m_last_tarposlen;
+	
 	//struct tee_stats gstats;
 private:
 	// player controlling this character
