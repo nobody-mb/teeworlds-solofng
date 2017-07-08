@@ -68,11 +68,16 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 		struct tee_stats *v = GameServer()->find_round_entry(Server()->
 			ClientName(Hit->GetPlayer()->GetCID()));
 			
-		float d = OwnerChar->m_last_travel_dist;
-		float l = OwnerChar->m_last_tarposlen;
+		float da, d = OwnerChar->m_last_travel_dist;
+		float dl, l = OwnerChar->m_last_tarposlen;
 		
-		printf("%s froze! dist = %f len = %f\n", Server()->
-			ClientName(oid), d, l);
+		da = OwnerChar->m_avgdist = ADD_AVG(d, OwnerChar->m_avgdist, 
+			OwnerChar->m_numdsamp);
+		dl = OwnerChar->m_avglen = ADD_AVG(l, OwnerChar->m_avglen, 
+			OwnerChar->m_numlsamp);
+
+		printf("%s froze! dist = %f (avg %f) len = %f (avg %f) num %d\n", 
+			Server()->ClientName(oid), d, l, da, dl, OwnerChar->m_numlsamp);
 		
 		if (o && v) {
 			if (m_Bounces)

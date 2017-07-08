@@ -21,6 +21,18 @@
 #include "gamemodes/boomfng.h"
 #include <string.h>
 #include <stdio.h>
+
+#include "player.h"
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
+
+
+
 struct CMute CGameContext::m_aMutes[MAX_MUTES];
 
 enum
@@ -31,6 +43,37 @@ enum
 
 void CGameContext::Construct(int Resetting)
 {
+	memset(round_stats, 0, sizeof(round_stats));
+	memset(round_names, 0, sizeof(round_names));
+	
+	num_totals = 0;
+	
+	struct dirent *ds;
+	DIR *dp;
+	
+	if ((dp = opendir(STATS_DIR))) {
+		while ((ds = readdir(dp)))
+			++num_totals;
+		closedir(dp);
+	} else {
+		printf("error reading stats\n");
+	}
+	
+	max_totals = num_totals + 256;
+	num_totals = 0;
+	
+	total_stats = (struct tee_stats *)calloc(max_totals, sizeof(struct tee_stats));
+	total_names = (char **)calloc(max_totals, sizeof(char *));
+	
+	if ((dp = opendir(STATS_DIR))) {
+		while ((ds = readdir(dp)))
+			if (*ds->d_name != '.') {
+				total_stats[num_totals] = read_statsfile(ds->d_name, 0);
+				total_names[num_totals] = strdup(ds->d_name);
+				num_totals++;
+			}
+		closedir(dp);
+	}
 	m_Resetting = 0;
 	m_pServer = 0;
 
@@ -53,10 +96,7 @@ void CGameContext::Construct(int Resetting)
 }
 
 CGameContext::CGameContext(int Resetting)
-{
-	memset(round_stats, 0, sizeof(round_stats));
-	memset(round_names, 0, sizeof(round_names));
-	
+{	
 	Construct(Resetting);
 }
 
@@ -67,6 +107,11 @@ CGameContext::CGameContext()
 
 CGameContext::~CGameContext()
 {
+	for (int i = 0; i < num_totals; i++)
+		free(total_names[i]);
+	free(total_names);
+	free(total_stats);
+	
 	for(int i = 0; i < MAX_CLIENTS; i++)
 		delete m_apPlayers[i];
 	if(!m_Resetting)
@@ -614,47 +659,27 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 	}
 }
 
-#include "player.h"
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <dirent.h>
-
-
 double CGameContext::print_best_group_all (char *dst, double (*callback)(struct tee_stats), double max)
 {
-	//return 0;
 	double kd = 0, best = 0;
-	struct dirent *ds;
-	DIR *dp;
 	char tmp_buf[128] = { 0 };
-	
-	dp = opendir(STATS_DIR);
-	while ((ds = readdir(dp)))
-		if (*ds->d_name != '.') {
-			struct tee_stats tmp = read_statsfile(ds->d_name, 0);
-			kd = callback(tmp);
-			if ((kd > best) && (kd < max) && tmp.shots >= 10)
-				best = kd;
+	int i;
+
+	for (i = 0; i < num_totals; i++) {
+		kd = callback(total_stats[i]);
+		if ((kd > best) && (kd < max) && total_stats[i].shots >= 10)
+			best = kd;
+	}
+
+	for (i = 0; i < num_totals; i++) {
+		if (callback(total_stats[i]) == best && total_stats[i].shots >= 10) {
+			if ((strlen(total_names[i]) + strlen(tmp_buf)) > sizeof(tmp_buf))
+				break;
+			strcat(tmp_buf, total_names[i]);
+			strcat(tmp_buf, ", ");
 		}
-	closedir(dp);
-	
-	dp = opendir(STATS_DIR);
-	while ((ds = readdir(dp)))
-		if (*ds->d_name != '.') {
-			struct tee_stats tmp = read_statsfile(ds->d_name, 0);
-			if (callback(tmp) == best && tmp.shots >= 10) {
-				if ((strlen(ds->d_name) + strlen(tmp_buf)) > sizeof(tmp_buf))
-					break;
-				strcat(tmp_buf, ds->d_name);
-				strcat(tmp_buf, ", ");
-			}
-		}
-	closedir(dp);
-	
+	}
+
 	tmp_buf[strlen(tmp_buf) - 2] = 0;
 	
 	sprintf(dst, "%.03f (%s)", best, ((best != 0) ? tmp_buf : "None"));
@@ -798,6 +823,17 @@ struct tee_stats CGameContext::read_statsfile (const char *name, time_t create)
 			}
 			ret.join_time = create;
 			write(src_fd, &ret, sizeof(ret));
+			
+			total_stats[num_totals].join_time = create;
+			total_names[num_totals] = strdup(name);
+			
+			if (++num_totals >= max_totals) {
+				max_totals += 256;
+				total_stats = (struct tee_stats *)realloc(total_stats,
+					max_totals * sizeof(struct tee_stats));
+				total_names = (char **)realloc(total_names, 
+					max_totals * sizeof(char *));
+			}
 		}
 	} else {
 		if (read(src_fd, &ret, sizeof(ret)) != sizeof(ret)) {
@@ -839,18 +875,18 @@ double CGameContext::get_accuracy (struct tee_stats fstats)
 
 void CGameContext::on_round_end (void)
 {
-	int i, src_fd;
+	int i, j, src_fd;
 	struct tee_stats *tp, totals;
 	char path[128];
-	
-	SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
-	print_best(4, &get_kd, 0);
 	
 	SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
 	print_best(4, &get_steals, 0);
 	
 	SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
 	print_best(4, &get_max_spree, 0);
+	
+	SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
+	print_best(4, &get_kd, 0);
 	
 	SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
 	print_best(4, &get_accuracy, 0);
@@ -862,7 +898,15 @@ void CGameContext::on_round_end (void)
 		if (!tp->join_time)
 			continue;
 		memset(&totals, 0, sizeof(totals));
-		totals = read_statsfile(round_names[i], time(NULL));
+		for (j = 0; j < num_totals; j++) {
+			if (!strncmp(round_names[i], total_names[j], 
+			    strlen(round_names[i])))
+				break;
+		}
+		if (j == num_totals)
+			totals = read_statsfile(round_names[i], time(NULL));
+		else
+			memcpy(&totals, &total_stats[j], sizeof(struct tee_stats));
 
 		if (tp->spree_max > totals.spree_max)
 			totals.spree_max = tp->spree_max;
@@ -891,6 +935,8 @@ void CGameContext::on_round_end (void)
 						(float)(totals.num_samples * 
 						totals.avg_ping)) / 
 						(++totals.num_samples));
+						
+		memcpy(&total_stats[j], &totals, sizeof(struct tee_stats));
 						
 		snprintf(path, sizeof(path), "%s/%s", STATS_DIR, round_names[i]);
 		if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
@@ -1100,20 +1146,25 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				int all = 0;
 				if (str_comp_num(pMsg->m_pMessage, "/topall", 7) == 0) {
 					char mg[128] = { 0 };
-					snprintf(mg, sizeof(mg), "all-time stats"
-			" (players with <10 shots fired not included) req by %s", 
-			Server()->ClientName(ClientID));
+					snprintf(mg, sizeof(mg), "all-time stats req by %s", 
+					Server()->ClientName(ClientID));
 					SendChat(-1, CGameContext::CHAT_ALL, mg);
+					if (((int)time(NULL) - last_reqd) < 5) {
+						SendChatTarget(ClientID, "stop spam");
+						return;
+					}
+					last_reqd = (int)time(NULL);
 					all = 1;
 				}
-				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
-				print_best(4, &get_kd, all);
 
 				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
 				print_best(4, &get_steals, all);
 				
 				SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
 				print_best(4, &get_max_spree, all);
+				
+				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
+				print_best(4, &get_kd, all);		
 				
 				SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
 				print_best(4, &get_accuracy, all);

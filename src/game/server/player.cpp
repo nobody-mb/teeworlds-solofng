@@ -35,7 +35,7 @@ CPlayer::~CPlayer()
 	delete m_pCharacter;
 	m_pCharacter = 0;
 }
-
+					
 void CPlayer::Tick()
 {
 #ifdef CONF_DEBUG
@@ -74,10 +74,8 @@ void CPlayer::Tick()
 			if ((tmp = GameServer()->find_round_entry(ID_NAME(GetCID()))))
 			if (!(++tmp->ping_tick % 16)) {
 				tmp->ping_tick = 0;
-				tmp->avg_ping = (unsigned short)((float)(m_Latency.m_Avg + 
-					(float)(tmp->num_samples * tmp->avg_ping)) / 
-					(tmp->num_samples + 1));
-				tmp->num_samples++;
+				tmp->avg_ping = (unsigned short)ADD_AVG(
+					m_Latency.m_Avg, tmp->avg_ping, tmp->num_samples);
 			}
 		}
 	}

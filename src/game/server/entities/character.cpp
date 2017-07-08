@@ -47,6 +47,10 @@ CCharacter::CCharacter(CGameWorld *pWorld)
 	m_ProximityRadius = ms_PhysSize;
 	m_Health = 0;
 	m_Armor = 0;
+	m_avgdist = 0;
+	m_avglen = 0;
+	m_numdsamp = 0;
+	m_numlsamp = 0;
 	//mem_zero(&gstats, sizeof(gstats));
 }
 

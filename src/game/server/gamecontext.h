@@ -15,6 +15,8 @@
 #include "gameworld.h"
 #include "player.h"
 
+#define ADD_AVG(vnew,avg,nsamp) (((float)((vnew) + (float)((nsamp) * (avg))) / (++nsamp)))
+
 #define MAX_MUTES 32
 
 /*
@@ -107,7 +109,7 @@ class CGameContext : public IGameServer
 	double print_best_group (char *dst, double (*callback)(struct tee_stats), double max);
 	double print_best_group_all (char *dst, double (*callback)(struct tee_stats), 
 		double max);
-	static struct tee_stats read_statsfile (const char *name, time_t create);
+	struct tee_stats read_statsfile (const char *name, time_t create);
 	static double get_steals (struct tee_stats);
 	static double get_kd (struct tee_stats);
 	static double get_accuracy (struct tee_stats);
@@ -115,6 +117,13 @@ class CGameContext : public IGameServer
 
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
+	
+	struct tee_stats *total_stats;
+	char **total_names;
+	int num_totals;
+	int max_totals;
+	
+	int last_reqd;
 	
 	struct tee_stats round_stats[512];
 	char round_names[512][64];
