@@ -28,6 +28,10 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_LastActionTick = Server()->Tick();
 	m_ChatScore = 0;
 	m_TeamChangeTick = Server()->Tick();
+	m_avgdist = 0;
+	m_avglen = 0;
+	m_numdsamp = 0;
+	m_numlsamp = 0;
 }
 
 CPlayer::~CPlayer()

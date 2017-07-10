@@ -133,6 +133,13 @@ public:
 	bool GetBot(int BotType) { switch (BotType) {case 0: return m_SpinBot; case 1: return m_AimBot; default: return false;} }
 	void SetBot(int BotType) { switch (BotType) {case 0: m_SpinBot = true; break; case 1:m_AimBot = true; break;} }
 	
+	float m_avgdist;
+	float m_avglen;
+	
+	int m_numdsamp;
+	int m_numlsamp;
+	
+	
 private:
 	CCharacter *m_pCharacter;
 	CGameContext *m_pGameServer;

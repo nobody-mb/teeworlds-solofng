@@ -71,13 +71,16 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 		float da, d = OwnerChar->m_last_travel_dist;
 		float dl, l = OwnerChar->m_last_tarposlen;
 		
-		da = OwnerChar->m_avgdist = ADD_AVG(d, OwnerChar->m_avgdist, 
-			OwnerChar->m_numdsamp);
-		dl = OwnerChar->m_avglen = ADD_AVG(l, OwnerChar->m_avglen, 
-			OwnerChar->m_numlsamp);
+		da = OwnerChar->GetPlayer()->m_avgdist = ADD_AVG(d, 
+			OwnerChar->GetPlayer()->m_avgdist, 
+			OwnerChar->GetPlayer()->m_numdsamp);
+		dl = OwnerChar->GetPlayer()->m_avglen = ADD_AVG(l, 
+			OwnerChar->GetPlayer()->m_avglen, 
+			OwnerChar->GetPlayer()->m_numlsamp);
 
 		printf("%s froze! dist = %f (avg %f) len = %f (avg %f) num %d\n", 
-			Server()->ClientName(oid), d, l, da, dl, OwnerChar->m_numlsamp);
+			Server()->ClientName(oid), d, l, da, dl,
+			OwnerChar->GetPlayer()->m_numlsamp);
 		
 		if (o && v) {
 			if (m_Bounces)
