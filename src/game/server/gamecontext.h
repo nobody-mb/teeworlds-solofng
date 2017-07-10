@@ -15,7 +15,7 @@
 #include "gameworld.h"
 #include "player.h"
 
-#define ADD_AVG(vnew,avg,nsamp) (((float)((vnew) + (float)((nsamp) * (avg))) / (++nsamp)))
+#define ADD_AVG(vnew,avg,nsamp) (((float)((vnew) + (float)((nsamp) * (avg)))) / (++nsamp))
 
 #define MAX_MUTES 32
 
