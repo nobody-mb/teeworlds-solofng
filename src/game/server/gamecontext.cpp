@@ -911,8 +911,8 @@ void CGameContext::on_round_end (void)
 		if (tp->spree_max > totals.spree_max)
 			totals.spree_max = tp->spree_max;
 	
-		for (int j = 0; j < 6; j++)
-			totals.multis[j] += tp->multis[j];
+		for (int k = 0; k < 6; k++)
+			totals.multis[k] += tp->multis[k];
 		
 		totals.num_games++;
 		totals.kills += tp->kills;
