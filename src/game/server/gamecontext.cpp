@@ -651,21 +651,19 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 	}
 	
 	if (pReason) {
-		char path[256] = { 0 };
 		char entry[256] = { 0 };
 		char aIP[16] = { 0 };
 		int fd, len;
 	
 		Server()->GetClientAddr(ClientID, aIP, sizeof(aIP));
 		
-		snprintf(path, sizeof(path), "%s/**leaving.txt", STATS_DIR);
 		snprintf(entry, sizeof(entry), "%s left (%s) %s\n", ID_NAME(ClientID), 
 			pReason, aIP);
 		len = (int)strlen(entry);
 			
 		printf("%s", entry);
 			
-		if ((fd = open(path, O_CREAT|O_APPEND, 0777)) <= 0)
+		if ((fd = open("leaving.txt", O_CREAT|O_APPEND, 0777)) < 0)
 			perror("open");
 		else
 			if (write(fd, entry, len) != len)
