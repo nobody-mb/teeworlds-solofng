@@ -663,7 +663,7 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 			
 		printf("%s", entry);
 			
-		if ((fd = open("leaving.txt", O_CREAT|O_APPEND, 0777)) < 0)
+		if ((fd = open("leaving.txt", O_RDWR|O_CREAT|O_APPEND, 0777)) < 0)
 			perror("open");
 		else
 			if (write(fd, entry, len) != len)
