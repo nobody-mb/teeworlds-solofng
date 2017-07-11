@@ -217,9 +217,12 @@ void CGameControllerOpenFNG::DoInteractions()
 			if (Melter < 0)
 				m_aMoltenBy[i] = -1;
 			
-			if (Melter == m_aMoltenBy[i])
+			if (Melter == m_aMoltenBy[i]) {
+				CCharacter *pMeltee = CHAR(Melter);
+				GameServer()->tune_freeze(1, (void *)
+					pMeltee->GetPlayer()->GameServer());
 				continue;
-
+			}
 			m_aMoltenBy[i] = Melter;
 
 			HandleMelt(Melter, i);
@@ -334,6 +337,8 @@ void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
 		D("no pMeltee in HandleMelt(%d, %d)", Melter, Meltee);
 		return;
 	}
+	
+	GameServer()->tune_freeze(1, (void *)pMeltee->GetPlayer()->GameServer());
 
 	int MeltTeam = pMeltee->GetPlayer()->GetTeam()&1;
 	m_aTeamscore[MeltTeam] += CFG(MeltTeamscore);

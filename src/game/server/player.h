@@ -139,12 +139,12 @@ public:
 	int m_numdsamp;
 	int m_numlsamp;
 	
-	
+	CGameContext *GameServer() const { return m_pGameServer; }
+
 private:
 	CCharacter *m_pCharacter;
 	CGameContext *m_pGameServer;
 
-	CGameContext *GameServer() const { return m_pGameServer; }
 	IServer *Server() const;
 
 	//

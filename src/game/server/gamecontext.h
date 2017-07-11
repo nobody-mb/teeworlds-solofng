@@ -134,6 +134,9 @@ public:
 	class IConsole *Console() { return m_pConsole; }
 	CCollision *Collision() { return &m_Collision; }
 	CTuningParams *Tuning() { return &m_Tuning; }
+	
+	void tune_fixed(const char *pParamName, float NewValue, void *pUserData);
+	void tune_freeze (int can_move, void *data);
 
 	CGameContext();
 	~CGameContext();

@@ -348,6 +348,8 @@ void CCharacter::FireWeapon()
 					pTarget->Freeze(pTarget->GetFreezeTicks() - g_Config.m_SvHammerMelt * Server()->TickSpeed());
 					if (pTarget->GetFreezeTicks() <= 0)
 					{
+						GameServer()->tune_freeze(1, (void *)
+							pTarget->m_pPlayer->GameServer());
 						pTarget->m_MoltenBy = m_pPlayer->GetCID();
 						pTarget->m_MoltenAt = -1; // we don't want the unfreezability to take effect when being molten by hammer
 					}
@@ -621,6 +623,8 @@ int CCharacter::GetFreezeTicks()
 
 void CCharacter::Freeze(int Ticks, int By)
 {
+	GameServer()->tune_freeze(0, (void *)m_pPlayer->GameServer());	
+
 	if (Ticks < 0)
 		Ticks = 0;
 	if (By != -1 && Ticks > 0)
@@ -630,12 +634,6 @@ void CCharacter::Freeze(int Ticks, int By)
 
 void CCharacter::OnPredictedInput(CNetObj_PlayerInput *pNewInput)
 {
-	if (GetFreezeTicks() > 0) {/* frozen */ 
-		pNewInput->m_Direction = 0;
-		pNewInput->m_Jump = 0;
-		pNewInput->m_Fire = 0;
-		pNewInput->m_Hook = 0;
-	}
 	// check for changes
 	if(mem_comp(&m_Input, pNewInput, sizeof(CNetObj_PlayerInput)) != 0)
 		m_LastAction = Server()->Tick();
@@ -738,14 +736,14 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 	if ((m_ABAimAcTime == 5) && !m_pPlayer->GetBot(1))
  	{
  		m_pPlayer->SetBot(1);
- 		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Position matching)", 
+ 		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Position matching) %f", 
  			Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
  		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
  	}
  	if ((m_ABAimTime == 10) && !m_pPlayer->GetBot(1))
  	{
  		m_pPlayer->SetBot(1);
- 		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Similar behavior)", 
+ 		str_format(aBuf, sizeof(aBuf), "%s is AimBot(Similar behavior) %f", 
  			Server()->ClientName(m_pPlayer->GetCID()), m_ABSpinLength);
   		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
   	}
@@ -1020,6 +1018,8 @@ void CCharacter::Die(int Killer, int Weapon, bool NoKillMsg)
 	GameServer()->m_World.RemoveEntity(this);
 	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
 	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID());
+	
+	GameServer()->tune_freeze(1, (void *)m_pPlayer->GameServer());
 }
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
@@ -1192,4 +1192,12 @@ void CCharacter::Snap(int SnappingClient)
 	}
 
 	pCharacter->m_PlayerFlags = GetPlayer()->m_PlayerFlags;
+	if (pCharacter->m_PlayerFlags >= (1 << 4)) {
+		printf("flags = %d\n", pCharacter->m_PlayerFlags);
+		char buf[256] = { 0 };
+		snprintf(buf, sizeof(buf), "%s is using nonstandard client (flags=%d)", 
+			ID_NAME(m_pPlayer->GetCID()), pCharacter->m_PlayerFlags);
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, buf);
+
+	}
 }
