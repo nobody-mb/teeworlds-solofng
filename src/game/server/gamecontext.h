@@ -139,7 +139,7 @@ public:
 	~CGameContext();
 
 	void Clear();
-	
+	void update_stats (struct tee_stats *dst, struct tee_stats *src);
 	struct tee_stats *add_round_entry (struct tee_stats st, const char *name);
 	struct tee_stats *find_round_entry (const char *name);
 	CEventHandler m_Events;

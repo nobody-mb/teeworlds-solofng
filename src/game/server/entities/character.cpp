@@ -630,6 +630,12 @@ void CCharacter::Freeze(int Ticks, int By)
 
 void CCharacter::OnPredictedInput(CNetObj_PlayerInput *pNewInput)
 {
+	if (m_Ninja.m_ActivationTick != 0) {/* frozen */ 
+		pNewInput->m_Direction = 0;
+		pNewInput->m_Jump = 0;
+		pNewInput->m_Fire = 0;
+		pNewInput->m_Hook = 0;
+	}
 	// check for changes
 	if(mem_comp(&m_Input, pNewInput, sizeof(CNetObj_PlayerInput)) != 0)
 		m_LastAction = Server()->Tick();

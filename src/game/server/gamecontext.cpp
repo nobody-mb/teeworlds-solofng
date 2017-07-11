@@ -643,6 +643,37 @@ void CGameContext::OnClientConnected(int ClientID)
 
 void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 {
+	struct tee_stats *t;
+	
+	if ((t = PLAYER_ENTRY(m_apPlayers[ClientID]))) {
+		t->spree = 0;	/* thanks SP | Someone :D */
+		t->num_games++;
+	}
+	
+	if (pReason) {
+		char path[256] = { 0 };
+		char entry[256] = { 0 };
+		char aIP[16] = { 0 };
+		int fd, len;
+	
+		Server()->GetClientAddr(ClientID, aIP, sizeof(aIP));
+		
+		snprintf(path, sizeof(path), "%s/**leaving.txt", STATS_DIR);
+		snprintf(entry, sizeof(entry), "%s left (%s) %s\n", ID_NAME(ClientID), 
+			pReason, aIP);
+		len = (int)strlen(entry);
+			
+		printf("%s", entry);
+			
+		if ((fd = open(path, O_CREAT|O_APPEND, 0777)) <= 0)
+			perror("open");
+		else
+			if (write(fd, entry, len) != len)
+				perror("write");
+			
+		close(fd);
+	}
+	
 	AbortVoteKickOnDisconnect(ClientID);
 	m_apPlayers[ClientID]->OnDisconnect(pReason);
 	delete m_apPlayers[ClientID];
@@ -873,10 +904,43 @@ double CGameContext::get_accuracy (struct tee_stats fstats)
 }
 
 
+void CGameContext::update_stats (struct tee_stats *dst, struct tee_stats *src)
+{
+	if (!dst->join_time)
+		dst->join_time = time(NULL);
+	
+	if (src->spree_max > dst->spree_max)
+		dst->spree_max = src->spree_max;
+	
+	for (int i = 0; i < 6; i++)
+		dst->multis[i] += src->multis[i];
+		
+	dst->kills += src->kills;
+	dst->kills_x2 += src->kills_x2;
+	dst->kills_wrong += src->kills_wrong;
+	dst->deaths += src->deaths;
+	dst->steals += src->steals;
+	dst->suicides += src->suicides;
+	dst->shots += src->shots;
+	dst->freezes += src->freezes;
+	dst->frozen += src->frozen;
+	dst->hammers += src->hammers;
+	dst->hammered += src->hammered;
+	dst->teamhooks += src->teamhooks;
+	dst->bounce_shots += src->bounce_shots;
+	if (src->is_bot)
+		dst->is_bot += 1;
+	dst->join_time += (time(NULL) - src->join_time);
+	dst->avg_ping = (unsigned short)((float)(src->avg_ping + 
+					(float)(dst->num_samples * 
+					dst->avg_ping)) / 
+					(++dst->num_samples));
+}
+
 void CGameContext::on_round_end (void)
 {
 	int i, j, src_fd;
-	struct tee_stats *tp, totals;
+	struct tee_stats totals;
 	char path[128];
 	
 	SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
@@ -892,10 +956,7 @@ void CGameContext::on_round_end (void)
 	print_best(4, &get_accuracy, 0);
 	
 	for (i = 0; i < round_index; i++) {
-		//if (!(tmp = m_apPlayers[i]) || !(tp = PLAYER_ENTRY(tmp)))
-		//	continue;
-		tp = &round_stats[i];
-		if (!tp->join_time)
+		if (!round_stats[i].join_time)
 			continue;
 		memset(&totals, 0, sizeof(totals));
 		for (j = 0; j < num_totals; j++) {
@@ -904,39 +965,9 @@ void CGameContext::on_round_end (void)
 				break;
 		}
 		if (j == num_totals)
-			totals = read_statsfile(round_names[i], time(NULL));
-		else
-			memcpy(&totals, &total_stats[j], sizeof(struct tee_stats));
+			total_stats[j] = read_statsfile(round_names[i], time(NULL));
 
-		if (tp->spree_max > totals.spree_max)
-			totals.spree_max = tp->spree_max;
-	
-		for (int k = 0; k < 6; k++)
-			totals.multis[k] += tp->multis[k];
-		
-		totals.num_games++;
-		totals.kills += tp->kills;
-		totals.kills_x2 += tp->kills_x2;
-		totals.kills_wrong += tp->kills_wrong;
-		totals.deaths += tp->deaths;
-		totals.steals += tp->steals;
-		totals.suicides += tp->suicides;
-		totals.shots += tp->shots;
-		totals.freezes += tp->freezes;
-		totals.frozen += tp->frozen;
-		totals.hammers += tp->hammers;
-		totals.hammered += tp->hammered;
-		totals.teamhooks += tp->teamhooks;
-		totals.bounce_shots += tp->bounce_shots;
-		if (tp->is_bot)
-			totals.is_bot = 1;
-		totals.join_time += (time(NULL) - tp->join_time);
-		totals.avg_ping = (unsigned short)((float)(tp->avg_ping + 
-						(float)(totals.num_samples * 
-						totals.avg_ping)) / 
-						(++totals.num_samples));
-						
-		memcpy(&total_stats[j], &totals, sizeof(struct tee_stats));
+		update_stats(&total_stats[j], &round_stats[i]);			
 						
 		snprintf(path, sizeof(path), "%s/%s", STATS_DIR, round_names[i]);
 		if ((src_fd = open(path, O_RDWR, 0777)) < 0) {
@@ -948,7 +979,7 @@ void CGameContext::on_round_end (void)
 			}
 		}
 	
-		write(src_fd, &totals, sizeof(totals));
+		write(src_fd, &total_stats[j], sizeof(struct tee_stats));
 		close(src_fd);
 	}
 	memset(round_stats, 0, sizeof(round_stats));
@@ -997,35 +1028,7 @@ struct tee_stats *CGameContext::add_round_entry (struct tee_stats st, const char
 	
 	strcpy(round_names[i], name);
 	
-	if (!round_stats[i].join_time)
-		round_stats[i].join_time = time(NULL);
-	
-	if (st.spree_max > round_stats[i].spree_max)
-		round_stats[i].spree_max = st.spree_max;
-	
-	for (int i = 0; i < 6; i++)
-		round_stats[i].multis[i] += st.multis[i];
-		
-	round_stats[i].kills += st.kills;
-	round_stats[i].kills_x2 += st.kills_x2;
-	round_stats[i].kills_wrong += st.kills_wrong;
-	round_stats[i].deaths += st.deaths;
-	round_stats[i].steals += st.steals;
-	round_stats[i].suicides += st.suicides;
-	round_stats[i].shots += st.shots;
-	round_stats[i].freezes += st.freezes;
-	round_stats[i].frozen += st.frozen;
-	round_stats[i].hammers += st.hammers;
-	round_stats[i].hammered += st.hammered;
-	round_stats[i].teamhooks += st.teamhooks;
-	round_stats[i].bounce_shots += st.bounce_shots;
-	if (st.is_bot)
-		round_stats[i].is_bot += 1;
-	round_stats[i].join_time += (time(NULL) - st.join_time);
-	round_stats[i].avg_ping = (unsigned short)((float)(st.avg_ping + 
-					(float)(round_stats[i].num_samples * 
-					round_stats[i].avg_ping)) / 
-					(++round_stats[i].num_samples));
+	update_stats(&round_stats[i], &st);
 					
 	return &round_stats[i];
 }
