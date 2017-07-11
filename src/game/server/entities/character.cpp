@@ -630,7 +630,7 @@ void CCharacter::Freeze(int Ticks, int By)
 
 void CCharacter::OnPredictedInput(CNetObj_PlayerInput *pNewInput)
 {
-	if (m_Ninja.m_ActivationTick != 0) {/* frozen */ 
+	if (GetFreezeTicks() > 0) {/* frozen */ 
 		pNewInput->m_Direction = 0;
 		pNewInput->m_Jump = 0;
 		pNewInput->m_Fire = 0;
