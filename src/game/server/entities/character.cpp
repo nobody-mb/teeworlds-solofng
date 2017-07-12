@@ -348,9 +348,9 @@ void CCharacter::FireWeapon()
 					pTarget->Freeze(pTarget->GetFreezeTicks() - g_Config.m_SvHammerMelt * Server()->TickSpeed());
 					if (pTarget->GetFreezeTicks() <= 0)
 					{
-						GameServer()->tune_freeze(1, (void *)
-							pTarget->m_pPlayer->GameServer());
-						pTarget->reset = 0;
+						//GameServer()->tune_freeze(1, (void *)
+						//	pTarget->m_pPlayer->GameServer());
+						//pTarget->reset = 0;
 						pTarget->m_MoltenBy = m_pPlayer->GetCID();
 						pTarget->m_MoltenAt = -1; // we don't want the unfreezability to take effect when being molten by hammer
 					}
@@ -1200,7 +1200,7 @@ void CCharacter::Snap(int SnappingClient)
 	}
 
 	pCharacter->m_PlayerFlags = GetPlayer()->m_PlayerFlags;
-	if (pCharacter->m_PlayerFlags >= (1 << 4)) {
+	if (pCharacter->m_PlayerFlags >= (1 << 5)) {
 		printf("flags = %d\n", pCharacter->m_PlayerFlags);
 		char buf[256] = { 0 };
 		snprintf(buf, sizeof(buf), "%s is using nonstandard client (flags=%d)", 

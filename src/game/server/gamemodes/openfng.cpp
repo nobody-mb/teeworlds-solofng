@@ -218,11 +218,11 @@ void CGameControllerOpenFNG::DoInteractions()
 				m_aMoltenBy[i] = -1;
 			
 			if (Melter == m_aMoltenBy[i]) {
-				CCharacter *pMeltee = CHAR(Melter);
-				if (pMeltee && pMeltee->reset) {
-					GameServer()->tune_freeze(1, (void *)pMeltee->GetPlayer()->GameServer());
-					pMeltee->reset = 0;
-				}
+				//CCharacter *pMeltee = CHAR(Melter);
+				//if (pMeltee && pMeltee->reset) {
+				//	GameServer()->tune_freeze(1, (void *)pMeltee->GetPlayer()->GameServer());
+				//	pMeltee->reset = 0;
+				//}
 				continue;
 			}
 			m_aMoltenBy[i] = Melter;
@@ -340,7 +340,7 @@ void CGameControllerOpenFNG::HandleMelt(int Melter, int Meltee)
 		return;
 	}
 	
-	GameServer()->tune_freeze(1, (void *)pMeltee->GetPlayer()->GameServer());
+	//GameServer()->tune_freeze(1, (void *)pMeltee->GetPlayer()->GameServer());
 
 	int MeltTeam = pMeltee->GetPlayer()->GetTeam()&1;
 	m_aTeamscore[MeltTeam] += CFG(MeltTeamscore);
