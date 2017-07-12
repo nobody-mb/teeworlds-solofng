@@ -620,7 +620,7 @@ void CCharacter::SetEmote(int Emote, int Tick)
 int CCharacter::GetFreezeTicks()
 {
 	if (reset && m_Core.m_Frozen <= 0) {
-		GameServer()->tune_freeze(1, (void *)GameServer());
+		GameServer()->tune_freeze(1, (void *)m_pPlayer->GameServer());
 		reset = 0;
 	}
 
@@ -629,7 +629,7 @@ int CCharacter::GetFreezeTicks()
 
 void CCharacter::Freeze(int Ticks, int By)
 {
-	GameServer()->tune_freeze(0, (void *)GameServer());
+	GameServer()->tune_freeze(0, (void *)m_pPlayer->GameServer());
 	reset = 1;	
 
 	if (Ticks < 0)
