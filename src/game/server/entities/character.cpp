@@ -350,6 +350,7 @@ void CCharacter::FireWeapon()
 					{
 						GameServer()->tune_freeze(1, (void *)
 							pTarget->m_pPlayer->GameServer());
+						pTarget->reset = 0;
 						pTarget->m_MoltenBy = m_pPlayer->GetCID();
 						pTarget->m_MoltenAt = -1; // we don't want the unfreezability to take effect when being molten by hammer
 					}
@@ -618,12 +619,18 @@ void CCharacter::SetEmote(int Emote, int Tick)
 
 int CCharacter::GetFreezeTicks()
 {
+	if (reset && m_Core.m_Frozen <= 0) {
+		GameServer()->tune_freeze(1, (void *)GameServer());
+		reset = 0;
+	}
+
 	return m_Core.m_Frozen;
 }
 
 void CCharacter::Freeze(int Ticks, int By)
 {
-	GameServer()->tune_freeze(0, (void *)m_pPlayer->GameServer());	
+	GameServer()->tune_freeze(0, (void *)GameServer());
+	reset = 1;	
 
 	if (Ticks < 0)
 		Ticks = 0;
@@ -1020,6 +1027,7 @@ void CCharacter::Die(int Killer, int Weapon, bool NoKillMsg)
 	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID());
 	
 	GameServer()->tune_freeze(1, (void *)m_pPlayer->GameServer());
+	reset = 0;
 }
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)

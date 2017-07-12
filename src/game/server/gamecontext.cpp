@@ -904,6 +904,9 @@ double CGameContext::get_accuracy (struct tee_stats fstats)
 
 void CGameContext::update_stats (struct tee_stats *dst, struct tee_stats *src)
 {
+	if (!dst || !src)
+		return;
+		
 	if (!dst->join_time)
 		dst->join_time = time(NULL);
 	

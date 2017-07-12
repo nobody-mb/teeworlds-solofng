@@ -82,6 +82,7 @@ public:
 	float m_last_travel_dist;
 	float m_last_tarposlen;
 	
+	int reset;
 	//struct tee_stats gstats;
 private:
 	// player controlling this character

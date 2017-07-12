@@ -219,8 +219,10 @@ void CGameControllerOpenFNG::DoInteractions()
 			
 			if (Melter == m_aMoltenBy[i]) {
 				CCharacter *pMeltee = CHAR(Melter);
-				GameServer()->tune_freeze(1, (void *)
-					pMeltee->GetPlayer()->GameServer());
+				if (pMeltee && pMeltee->reset) {
+					GameServer()->tune_freeze(1, (void *)pMeltee->GetPlayer()->GameServer());
+					pMeltee->reset = 0;
+				}
 				continue;
 			}
 			m_aMoltenBy[i] = Melter;
