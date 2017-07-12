@@ -348,9 +348,6 @@ void CCharacter::FireWeapon()
 					pTarget->Freeze(pTarget->GetFreezeTicks() - g_Config.m_SvHammerMelt * Server()->TickSpeed());
 					if (pTarget->GetFreezeTicks() <= 0)
 					{
-						//GameServer()->tune_freeze(1, (void *)
-						//	pTarget->m_pPlayer->GameServer());
-						//pTarget->reset = 0;
 						pTarget->m_MoltenBy = m_pPlayer->GetCID();
 						pTarget->m_MoltenAt = -1; // we don't want the unfreezability to take effect when being molten by hammer
 					}
@@ -619,19 +616,11 @@ void CCharacter::SetEmote(int Emote, int Tick)
 
 int CCharacter::GetFreezeTicks()
 {
-	if (reset && m_Core.m_Frozen <= 0) {
-	//	m_pPlayer->GameServer()->tune_freeze(1, (void *)m_pPlayer->GameServer());
-		reset = 0;
-	}
-
 	return m_Core.m_Frozen;
 }
 
 void CCharacter::Freeze(int Ticks, int By)
 {
-	//m_pPlayer->GameServer()->tune_freeze(0, (void *)m_pPlayer->GameServer());
-	reset = 1;	
-
 	if (Ticks < 0)
 		Ticks = 0;
 	if (By != -1 && Ticks > 0)
@@ -829,6 +818,10 @@ void CCharacter::Tick()
 
 	if (m_Core.m_Frozen)
 	{
+		if (!reset) {
+			GameServer()->tune_freeze(0, (void *)m_pPlayer->GameServer());
+			reset = 1;
+		}
 		if (m_ActiveWeapon != WEAPON_NINJA)
 			GiveNinja(true);
 		else if (m_Ninja.m_ActivationTick + 5 * Server()->TickSpeed() < Server()->Tick())
@@ -843,6 +836,11 @@ void CCharacter::Tick()
 	}
 	else
 	{
+		if (reset) {
+			GameServer()->tune_freeze(1, (void *)m_pPlayer->GameServer());
+			reset = 0;
+		}
+		
 		if (m_ActiveWeapon == WEAPON_NINJA)
 		{
 			TakeNinja();
@@ -1025,9 +1023,6 @@ void CCharacter::Die(int Killer, int Weapon, bool NoKillMsg)
 	GameServer()->m_World.RemoveEntity(this);
 	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
 	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID());
-	
-	GameServer()->tune_freeze(1, (void *)m_pPlayer->GameServer());
-	reset = 0;
 }
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
