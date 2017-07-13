@@ -47,6 +47,7 @@ CCharacter::CCharacter(CGameWorld *pWorld)
 	m_ProximityRadius = ms_PhysSize;
 	m_Health = 0;
 	m_Armor = 0;
+	count = 0;
 	//mem_zero(&gstats, sizeof(gstats));
 }
 
@@ -820,7 +821,7 @@ void CCharacter::Tick()
 	{
 		if (!reset) {
 			printf("frozen %p %p\n", (void *)GameServer(), (void *)GetPlayer()->GameServer());
-			GameServer()->tune_freeze(0, (void *)GetPlayer()->GameServer());
+			//GameServer()->tune_freeze(0, (void *)GetPlayer()->GameServer());
 			reset = 1;
 		}
 		if (m_ActiveWeapon != WEAPON_NINJA)
@@ -839,7 +840,7 @@ void CCharacter::Tick()
 	{
 		if (reset) {
 			printf("unfrozen %p %p\n", (void *)GameServer(), (void *)GetPlayer()->GameServer());
-			GameServer()->tune_freeze(1, (void *)GetPlayer()->GameServer());
+			//GameServer()->tune_freeze(1, (void *)GetPlayer()->GameServer());
 			reset = 0;
 		}
 		
@@ -1197,7 +1198,7 @@ void CCharacter::Snap(int SnappingClient)
 	}
 
 	pCharacter->m_PlayerFlags = GetPlayer()->m_PlayerFlags;
-	if (pCharacter->m_PlayerFlags >= (1 << 5)) {
+	if (pCharacter->m_PlayerFlags >= (1 << 5) && ++count <= 5) {
 		printf("flags = %d\n", pCharacter->m_PlayerFlags);
 		char buf[256] = { 0 };
 		snprintf(buf, sizeof(buf), "%s is using nonstandard client (flags=%d)", 

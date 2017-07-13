@@ -86,6 +86,7 @@ public:
 	//struct tee_stats gstats;
 private:
 	// player controlling this character
+	int count;
 	class CPlayer *m_pPlayer;
 
 	bool m_Alive;
