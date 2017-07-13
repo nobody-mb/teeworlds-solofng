@@ -819,7 +819,8 @@ void CCharacter::Tick()
 	if (m_Core.m_Frozen)
 	{
 		if (!reset) {
-			GameServer()->tune_freeze(0, (void *)m_pPlayer->GameServer());
+			printf("frozen %p %p\n", (void *)GameServer(), (void *)GetPlayer()->GameServer());
+			GameServer()->tune_freeze(0, (void *)GetPlayer()->GameServer());
 			reset = 1;
 		}
 		if (m_ActiveWeapon != WEAPON_NINJA)
@@ -837,7 +838,8 @@ void CCharacter::Tick()
 	else
 	{
 		if (reset) {
-			GameServer()->tune_freeze(1, (void *)m_pPlayer->GameServer());
+			printf("unfrozen %p %p\n", (void *)GameServer(), (void *)GetPlayer()->GameServer());
+			GameServer()->tune_freeze(1, (void *)GetPlayer()->GameServer());
 			reset = 0;
 		}
 		
