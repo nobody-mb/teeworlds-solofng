@@ -1606,36 +1606,26 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 }
 
-void CGameContext::tune_freeze (int can_move, void *data)
+//tune for freezed tees
+void CGameContext::SendFakeTuningParams(int ClientID)
 {
-	if (can_move) {
-		tune_fixed("ground_control_accel", 2.0, data);
-		tune_fixed("ground_jump_impulse", 13.2, data);
-		tune_fixed("air_jump_impulse", 12.0, data);
-		tune_fixed("air_control_accel", 1.5, data);
-		tune_fixed("hook_length", 380.0, data);
-	} else {
-		tune_fixed("ground_control_accel", 0, data);
-		tune_fixed("ground_jump_impulse", 0, data);
-		tune_fixed("air_jump_impulse", 0, data);
-		tune_fixed("air_control_accel", 0, data);
-		tune_fixed("hook_length", 0, data);
-	}
-}
-
-void CGameContext::tune_fixed(const char *pParamName, float NewValue, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-
-	if(pSelf->Tuning()->Set(pParamName, NewValue))
-	{
-		char aBuf[256];
-		str_format(aBuf, sizeof(aBuf), "%s changed to %.2f", pParamName, NewValue);
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "tuning", aBuf);
-		pSelf->SendTuningParams(-1);
-	}
-	else
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "tuning", "No such tuning parameter");
+	static CTuningParams FakeTuning;
+	
+	FakeTuning.m_GroundControlSpeed = 0;
+	FakeTuning.m_GroundJumpImpulse = 0;
+	FakeTuning.m_GroundControlAccel = 0;
+	FakeTuning.m_AirControlSpeed = 0;
+	FakeTuning.m_AirJumpImpulse = 0;
+	FakeTuning.m_AirControlAccel = 0;
+	FakeTuning.m_HookDragSpeed = 0;
+	FakeTuning.m_HookDragAccel = 0;
+	FakeTuning.m_HookFireSpeed = 0;
+	
+	CMsgPacker Msg(NETMSGTYPE_SV_TUNEPARAMS);
+	int *pParams = (int *)&FakeTuning;
+	for(unsigned i = 0; i < sizeof(FakeTuning)/sizeof(int); i++)
+		Msg.AddInt(pParams[i]);
+	Server()->SendMsg(&Msg, MSGFLAG_VITAL, ClientID);
 }
 
 void CGameContext::ConTuneParam(IConsole::IResult *pResult, void *pUserData)

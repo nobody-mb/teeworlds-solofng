@@ -819,9 +819,9 @@ void CCharacter::Tick()
 
 	if (m_Core.m_Frozen)
 	{
-		if (!reset) {
-			printf("frozen %p %p\n", (void *)GameServer(), (void *)GetPlayer()->GameServer());
-			//GameServer()->tune_freeze(0, (void *)GetPlayer()->GameServer());
+		if (!reset && GetPlayer()) {
+			printf("frozen %d\n", GetPlayer()->GetCID());
+			GameServer()->SendFakeTuningParams(GetPlayer()->GetCID());
 			reset = 1;
 		}
 		if (m_ActiveWeapon != WEAPON_NINJA)
@@ -838,9 +838,9 @@ void CCharacter::Tick()
 	}
 	else
 	{
-		if (reset) {
-			printf("unfrozen %p %p\n", (void *)GameServer(), (void *)GetPlayer()->GameServer());
-			//GameServer()->tune_freeze(1, (void *)GetPlayer()->GameServer());
+		if (reset && GetPlayer()) {
+			printf("unfrozen %d\n", GetPlayer()->GetCID());
+			GameServer()->SendTuningParams(GetPlayer()->GetCID());
 			reset = 0;
 		}
 		
