@@ -821,7 +821,7 @@ void CCharacter::Tick()
 	{
 		if (!reset && GetPlayer()) {
 			printf("frozen %d\n", GetPlayer()->GetCID());
-			GameServer()->SendFakeTuningParams(GetPlayer()->GetCID());
+//			GameServer()->SendFakeTuningParams(GetPlayer()->GetCID());
 			reset = 1;
 		}
 		if (m_ActiveWeapon != WEAPON_NINJA)
@@ -840,7 +840,7 @@ void CCharacter::Tick()
 	{
 		if (reset && GetPlayer()) {
 			printf("unfrozen %d\n", GetPlayer()->GetCID());
-			GameServer()->SendTuningParams(GetPlayer()->GetCID());
+//			GameServer()->SendTuningParams(GetPlayer()->GetCID());
 			reset = 0;
 		}
 		
