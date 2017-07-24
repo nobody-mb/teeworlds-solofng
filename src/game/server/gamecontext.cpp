@@ -897,6 +897,11 @@ double CGameContext::get_kills (struct tee_stats fstats)
 	return (double)(fstats.kills + fstats.kills_x2 + fstats.kills_wrong);
 }
 
+double CGameContext::get_hammers (struct tee_stats fstats)
+{
+	return (double)fstats.hammers;
+}
+
 double CGameContext::get_accuracy (struct tee_stats fstats)
 {
 	if (fstats.shots < 2)
@@ -1164,19 +1169,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					}
 					last_reqd = (int)time(NULL);
 					all = 1;
-					
-				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
-				print_best(4, &get_steals, all);
-				
-				SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
-				print_best(4, &get_max_spree, all);
-				
-				SendChat(-1, CGameContext::CHAT_ALL, "most kills:");
-				print_best(4, &get_kills, all);		
-				
-				SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
-				print_best(4, &get_accuracy, all);
-				} else {
+				}
 
 				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
 				print_best(4, &get_steals, all);
@@ -1184,11 +1177,18 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
 				print_best(4, &get_max_spree, all);
 				
-				SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
-				print_best(4, &get_kd, all);		
+				if (all) {
+					SendChat(-1, CGameContext::CHAT_ALL, "most hammers:");
+					print_best(4, &get_hammers, all);		
 				
-				SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
-				print_best(4, &get_accuracy, all);
+					SendChat(-1, CGameContext::CHAT_ALL, "most kills:");
+					print_best(4, &get_kills, all);
+				} else {
+					SendChat(-1, CGameContext::CHAT_ALL, "best k/d:");
+					print_best(4, &get_kd, all);		
+				
+					SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
+					print_best(4, &get_accuracy, all);
 				}
 			} 
 		}
