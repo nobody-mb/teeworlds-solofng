@@ -802,8 +802,8 @@ void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *c
 		ct->hammers, ct->hammered, ct->steals, ct->suicides);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 				
-	str_format(buf, sizeof(buf), "- time: %d:%.02d | spree: %d current, %d max | multis: %d:",
-		diff / 60, diff % 60, ct->spree, ct->spree_max, ct->multis[0] + 
+	str_format(buf, sizeof(buf), "- time: %d:%.02d | max spree: %d | multis (max %d): %d:",
+		diff / 60, diff % 60, ct->spree_max, ct->max_multi, ct->multis[0] + 
 		ct->multis[1] + ct->multis[2] + ct->multis[3] + ct->multis[4] + ct->multis[5]);
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
 
@@ -870,6 +870,8 @@ struct tee_stats CGameContext::read_statsfile (const char *name, time_t create)
 		}
 	}
 	close(src_fd);
+	
+	ret.join_time = 0;
 
 	return ret;
 }
@@ -911,17 +913,24 @@ double CGameContext::get_accuracy (struct tee_stats fstats)
 	return (double)fstats.freezes / (double)d;
 }
 
+double CGameContext::get_bounces (struct tee_stats fstats)
+{
+	return (double)fstats.bounce_shots;
+}
+
 
 void CGameContext::update_stats (struct tee_stats *dst, struct tee_stats *src)
 {
 	if (!dst || !src)
 		return;
 		
-	if (!dst->join_time)
-		dst->join_time = time(NULL);
+	//if (!dst->join_time)
+	//	dst->join_time = time(NULL);
 	
 	if (src->spree_max > dst->spree_max)
 		dst->spree_max = src->spree_max;
+	if (src->max_multi > dst->max_multi)
+		dst->max_multi = src->max_multi;
 	
 	for (int i = 0; i < 6; i++)
 		dst->multis[i] += src->multis[i];
@@ -1173,6 +1182,9 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
 				print_best(4, &get_steals, all);
+
+				SendChat(-1, CGameContext::CHAT_ALL, "most bounces:");
+				print_best(4, &get_bounces, all);
 				
 				SendChat(-1, CGameContext::CHAT_ALL, "best spree:");
 				print_best(4, &get_max_spree, all);
@@ -1190,6 +1202,12 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
 					print_best(4, &get_accuracy, all);
 				}
+			} else if (str_comp_num(pMsg->m_pMessage, "/topkills", 9) == 0) {
+				SendChat(-1, CGameContext::CHAT_ALL, "most kills:");
+				print_best(12, &get_accuracy, 1);
+			} else if (str_comp_num(pMsg->m_pMessage, "/topsteals", 9) == 0) {
+				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
+				print_best(12, &get_steals, 1);
 			} 
 		}
 		else

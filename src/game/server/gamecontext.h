@@ -53,7 +53,7 @@ struct tee_stats {
 		unsigned char ping_tick, is_bot;
 		int bounce_shots, tick_count;
 		time_t join_time;
-		int num_games;
+		int num_games, max_multi;
 	};
 #endif
 
@@ -116,6 +116,7 @@ class CGameContext : public IGameServer
 	static double get_max_spree (struct tee_stats fstats);
 	static double get_kills (struct tee_stats fstats);
 	static double get_hammers (struct tee_stats fstats);
+	static double get_bounces (struct tee_stats fstats);
 
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
