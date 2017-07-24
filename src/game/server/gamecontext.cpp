@@ -688,20 +688,24 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 	}
 }
 
-double CGameContext::print_best_group_all (char *dst, double (*callback)(struct tee_stats), double max)
+double CGameContext::print_best_group_all (char *dst, double (*callback)(struct tee_stats, char *), double max)
 {
 	double kd = 0, best = 0;
 	char tmp_buf[128] = { 0 };
+	char call_buf[128] = { 0 };
 	int i;
 
+	printf("num totals = %d\n", num_totals);
+
 	for (i = 0; i < num_totals; i++) {
-		kd = callback(total_stats[i]);
+		kd = callback(total_stats[i], call_buf);
 		if ((kd > best) && (kd < max) && total_stats[i].shots >= 10)
 			best = kd;
 	}
 
 	for (i = 0; i < num_totals; i++) {
-		if (callback(total_stats[i]) == best && total_stats[i].shots >= 10) {
+		if (callback(total_stats[i], call_buf) == best && 
+		    total_stats[i].shots >= 10) {
 			if ((strlen(total_names[i]) + strlen(tmp_buf)) > sizeof(tmp_buf))
 				break;
 			strcat(tmp_buf, total_names[i]);
@@ -716,27 +720,35 @@ double CGameContext::print_best_group_all (char *dst, double (*callback)(struct 
 	return best;
 }
 
-double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_stats), double max)
+double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_stats, char *), double max)
 {
-	int i;
+	int i, len;
 	double kd = 0, best = 0;
 	char tmp_buf[128] = { 0 };
+	char call_buf[128] = { 0 };
 	
 	for (i = 0; i < round_index; i++) {
 		if (!round_names[i][0])
 			continue;
-		kd = callback(round_stats[i]);
+		kd = callback(round_stats[i], call_buf);
 		if ((kd > best) && (kd < max))
 			best = kd;
 	}
 	for (i = 0; i < round_index; i++) {
 		if (!round_names[i][0])
 			continue;
-		kd = callback(round_stats[i]);
+		memset(call_buf, 0, sizeof(call_buf));
+		kd = callback(round_stats[i], call_buf);
 		if (kd == best) {
-			if (strlen(tmp_buf) + strlen(round_names[i]) > sizeof(tmp_buf))
+			len = strlen(call_buf) + strlen(tmp_buf) + strlen(round_names[i]) + 4;
+			if (len > sizeof(tmp_buf))
 				break;
 			strcat(tmp_buf, round_names[i]);
+			if (strlen(call_buf)) {
+				strcat(tmp_buf, " (");
+				strcat(tmp_buf, call_buf);
+				strcat(tmp_buf, ")");
+			}
 			strcat(tmp_buf, ", ");
 		}
 	}
@@ -750,7 +762,7 @@ double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_
 
 #define PLACEHOLDER 9999999999
 
-void CGameContext::print_best (int max, double (*callback)(struct tee_stats), int all)
+void CGameContext::print_best (int max, double (*callback)(struct tee_stats, char *), int all)
 {
 	double tmp, best = PLACEHOLDER;
 	char buf[256];
@@ -774,7 +786,14 @@ void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *c
 {
 	char buf[128];
 	int c, d;
-	time_t diff = time(NULL) - ct->join_time;
+	time_t diff;
+	
+	/* no ones going to play this long */
+	if (ct->join_time > (60 * 60 * 24 * 365))
+		diff = time(NULL) - ct->join_time;
+	else
+		diff = ct->join_time;
+
 	str_format(buf, sizeof(buf), "stats for %s (requested by %s)", 
 		name, Server()->ClientName(req_by));
 	SendChat(-1, CGameContext::CHAT_ALL, buf);
@@ -877,43 +896,51 @@ struct tee_stats CGameContext::read_statsfile (const char *name, time_t create)
 }
 
 
-double CGameContext::get_max_spree (struct tee_stats fstats)
+double CGameContext::get_max_spree (struct tee_stats fstats, char *buf)
 {
 	return (double)fstats.spree_max;
 }
 
-double CGameContext::get_steals (struct tee_stats fstats)
+double CGameContext::get_steals (struct tee_stats fstats, char *buf)
 {
+	int k = fstats.kills + fstats.kills_x2 + fstats.kills_wrong;
+	if (k && buf)
+		sprintf(buf, "%.02f%% of %d kills", 
+			((double)fstats.steals / (double)k) * 100, k);
+		
 	return (double)fstats.steals;
 }
 
-double CGameContext::get_kd (struct tee_stats fstats)
+double CGameContext::get_kd (struct tee_stats fstats, char *buf)
 {
 	int k = fstats.kills + fstats.kills_x2 + fstats.kills_wrong;
 	int d = fstats.deaths ? fstats.deaths : 1;
 	return (double)k / (double)d;
 }
 
-double CGameContext::get_kills (struct tee_stats fstats)
+double CGameContext::get_kills (struct tee_stats fstats, char *buf)
 {
 	return (double)(fstats.kills + fstats.kills_x2 + fstats.kills_wrong);
 }
 
-double CGameContext::get_hammers (struct tee_stats fstats)
+double CGameContext::get_hammers (struct tee_stats fstats, char *buf)
 {
 	return (double)fstats.hammers;
 }
 
-double CGameContext::get_accuracy (struct tee_stats fstats)
+double CGameContext::get_accuracy (struct tee_stats fstats, char *buf)
 {
 	if (fstats.shots < 2)
 		return 0.0f;
+		
+	if (buf)
+		sprintf(buf, "avg. ping: %d", fstats.avg_ping);
 		
 	int d = fstats.shots ? fstats.shots : 1;
 	return (double)fstats.freezes / (double)d;
 }
 
-double CGameContext::get_bounces (struct tee_stats fstats)
+double CGameContext::get_bounces (struct tee_stats fstats, char *buf)
 {
 	return (double)fstats.bounce_shots;
 }
@@ -976,7 +1003,7 @@ void CGameContext::on_round_end (void)
 	print_best(4, &get_accuracy, 0);
 	
 	for (i = 0; i < round_index; i++) {
-		if (!round_stats[i].join_time)
+		if (!round_names[i][0])
 			continue;
 		memset(&totals, 0, sizeof(totals));
 		for (j = 0; j < num_totals; j++) {
@@ -984,8 +1011,10 @@ void CGameContext::on_round_end (void)
 			    strlen(round_names[i])))
 				break;
 		}
-		if (j == num_totals)
+		if (j == num_totals) {
+			++num_totals;
 			total_stats[j] = read_statsfile(round_names[i], time(NULL));
+		}
 
 		update_stats(&total_stats[j], &round_stats[i]);			
 						
@@ -1167,7 +1196,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				}
 			} else if (str_comp_num(pMsg->m_pMessage, "/topkills", 9) == 0) {
 				SendChat(-1, CGameContext::CHAT_ALL, "most kills:");
-				print_best(12, &get_accuracy, 1);
+				print_best(12, &get_kills, 1);
 			} else if (str_comp_num(pMsg->m_pMessage, "/topsteals", 9) == 0) {
 				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
 				print_best(12, &get_steals, 1);

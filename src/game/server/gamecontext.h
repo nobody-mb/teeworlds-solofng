@@ -105,18 +105,19 @@ class CGameContext : public IGameServer
 
 	bool m_Resetting;
 	void send_stats (const char *name, int req_by, struct tee_stats *ct);
-	void print_best (int max, double (*callback)(struct tee_stats), int all);
-	double print_best_group (char *dst, double (*callback)(struct tee_stats), double max);
-	double print_best_group_all (char *dst, double (*callback)(struct tee_stats), 
-		double max);
+	void print_best (int max, double (*callback)(struct tee_stats, char *), int all);
+	double print_best_group (char *dst, 
+		double (*callback)(struct tee_stats, char *), double max);
+	double print_best_group_all (char *dst, 
+		double (*callback)(struct tee_stats, char *), double max);
 	struct tee_stats read_statsfile (const char *name, time_t create);
-	static double get_steals (struct tee_stats);
-	static double get_kd (struct tee_stats);
-	static double get_accuracy (struct tee_stats);
-	static double get_max_spree (struct tee_stats fstats);
-	static double get_kills (struct tee_stats fstats);
-	static double get_hammers (struct tee_stats fstats);
-	static double get_bounces (struct tee_stats fstats);
+	static double get_steals (struct tee_stats, char *);
+	static double get_kd (struct tee_stats, char *);
+	static double get_accuracy (struct tee_stats, char *);
+	static double get_max_spree (struct tee_stats fstats, char *);
+	static double get_kills (struct tee_stats fstats, char *);
+	static double get_hammers (struct tee_stats fstats, char *);
+	static double get_bounces (struct tee_stats fstats, char *);
 
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
