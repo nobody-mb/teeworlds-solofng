@@ -1012,7 +1012,7 @@ void CGameContext::on_round_end (void)
 				break;
 		}
 		if (j == num_totals) {
-			++num_totals;
+			//++num_totals;
 			total_stats[j] = read_statsfile(round_names[i], time(NULL));
 		}
 
