@@ -88,6 +88,8 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_HammeredBy = -1;
 
 	m_BloodTicks = 0;
+	
+	ccreated = time(NULL);
 
 	return true;
 }
@@ -443,12 +445,18 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_RIFLE:
 		{
-			struct tee_stats *tmp = GameServer()->find_round_entry(Server()->
-					ClientName(m_pPlayer->GetCID()));
-			if (tmp) 
-				tmp->shots++;
-			//m_pPlayer->gstats.shots++;
-			new CLaser(GameWorld(), m_Pos, Direction, GameServer()->Tuning()->m_LaserReach, m_pPlayer->GetCID());
+			if ((time(NULL) - ccreated) <= 1) {
+				printf("spawn shot not counted\n");
+			} else { 
+				struct tee_stats *tmp = GameServer()->find_round_entry(
+					Server()->ClientName(m_pPlayer->GetCID()));
+				if (tmp) 
+					tmp->shots++;
+			}
+
+			new CLaser(GameWorld(), m_Pos, Direction,
+				GameServer()->Tuning()->m_LaserReach, 
+				m_pPlayer->GetCID());
 			GameServer()->CreateSound(m_Pos, SOUND_RIFLE_FIRE);
 		} break;
 

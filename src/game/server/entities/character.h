@@ -9,6 +9,8 @@
 
 #include <game/gamecore.h>
 
+#include <time.h>
+
 enum
 {
 	WEAPON_GAME = -3, // team switching etc
@@ -82,6 +84,7 @@ public:
 	float m_last_travel_dist;
 	float m_last_tarposlen;
 	
+	time_t ccreated;
 	int reset;
 	//struct tee_stats gstats;
 private:
