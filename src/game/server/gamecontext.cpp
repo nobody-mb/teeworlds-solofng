@@ -850,10 +850,10 @@ struct tee_stats CGameContext::read_statsfile (const char *name, time_t create)
 				fprintf(stderr, "error creating file %s\n", path);
 				return ret;
 			}
-			ret.join_time = create;
+			ret.join_time = 0;//create;
 			write(src_fd, &ret, sizeof(ret));
 			
-			total_stats[num_totals].join_time = create;
+			total_stats[num_totals].join_time = 0;//create;
 			total_names[num_totals] = strdup(name);
 			
 			if (++num_totals >= max_totals) {
@@ -1133,7 +1133,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					struct tee_stats tmp;
 					
 					tmp = read_statsfile(namebuf, 0);
-					if (!tmp.join_time) {										
+					if (!tmp.shots) {										
 						SendChatTarget(ClientID, "invalid player");
 						printf("invalid player %s\n", namebuf);
 					} else {
@@ -1165,6 +1165,12 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					if (tmp)
 						send_stats(ID_NAME(ClientID), ClientID, tmp);
 				}
+			} else if (str_comp_num(pMsg->m_pMessage, "/topkills", 9) == 0) {
+				SendChat(-1, CGameContext::CHAT_ALL, "most kills:");
+				print_best(12, &get_accuracy, 1);
+			} else if (str_comp_num(pMsg->m_pMessage, "/topsteals", 9) == 0) {
+				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
+				print_best(12, &get_steals, 1);
 			} else if (str_comp_num(pMsg->m_pMessage, "/top", 4) == 0) { 
 				int all = 0;
 				if (str_comp_num(pMsg->m_pMessage, "/topall", 7) == 0) {
@@ -1202,12 +1208,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					SendChat(-1, CGameContext::CHAT_ALL, "best accuracy:");
 					print_best(4, &get_accuracy, all);
 				}
-			} else if (str_comp_num(pMsg->m_pMessage, "/topkills", 9) == 0) {
-				SendChat(-1, CGameContext::CHAT_ALL, "most kills:");
-				print_best(12, &get_accuracy, 1);
-			} else if (str_comp_num(pMsg->m_pMessage, "/topsteals", 9) == 0) {
-				SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
-				print_best(12, &get_steals, 1);
 			} 
 		}
 		else
