@@ -114,6 +114,7 @@ class CGameContext : public IGameServer
 	static double get_kd (struct tee_stats);
 	static double get_accuracy (struct tee_stats);
 	static double get_max_spree (struct tee_stats fstats);
+	static double get_kills (struct tee_stats fstats);
 
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
