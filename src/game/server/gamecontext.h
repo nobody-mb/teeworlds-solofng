@@ -14,6 +14,7 @@
 #include "gamecontroller.h"
 #include "gameworld.h"
 #include "player.h"
+#include "stats.h"
 
 #define ADD_AVG(vnew,avg,nsamp) (((float)((vnew) + (float)((nsamp) * (avg)))) / (++nsamp))
 
@@ -40,26 +41,6 @@
 			All players (CPlayer::snap)
 
 */
-
-#ifndef TEE_STATS
-#define TEE_STATS
-struct tee_stats {
-		int spree, spree_max, multi, multis[6];
-		int kills, kills_wrong, kills_x2;
-		int lastkilltime, frozeby, deaths, steals, suicides;
-		int shots, freezes, frozen, hammers, hammered, teamhooks;
-		int num_samples;
-		unsigned short avg_ping;
-		unsigned char ping_tick, is_bot;
-		int bounce_shots, tick_count;
-		time_t join_time;
-		int num_games, max_multi;
-	};
-#endif
-
-#define PLAYER_ENTRY(pPlayer) (find_round_entry(Server()->ClientName(pPlayer->GetCID())))
-#define ID_NAME(id) (Server()->ClientName(id))
-#define PLAYER_NUM(i) (GameServer()->m_apPlayers[i])
 
 struct CMute {
 	char m_IP[16];// TODO ipv6
@@ -104,51 +85,22 @@ class CGameContext : public IGameServer
 	void Construct(int Resetting);
 
 	bool m_Resetting;
-	void send_stats (const char *name, int req_by, struct tee_stats *ct);
-	void print_best (int max, double (*callback)(struct tee_stats, char *), int all);
-	double print_best_group (char *dst, 
-		double (*callback)(struct tee_stats, char *), double max);
-	double print_best_group_all (char *dst, 
-		double (*callback)(struct tee_stats, char *), double max);
-	struct tee_stats read_statsfile (const char *name, time_t create);
-	static double get_steals (struct tee_stats, char *);
-	static double get_kd (struct tee_stats, char *);
-	static double get_accuracy (struct tee_stats, char *);
-	static double get_max_spree (struct tee_stats fstats, char *);
-	static double get_kills (struct tee_stats fstats, char *);
-	static double get_hammers (struct tee_stats fstats, char *);
-	static double get_bounces (struct tee_stats fstats, char *);
-
+	
 	static struct CMute m_aMutes[MAX_MUTES];
 	void Mute(const char *pIP, int Secs, const char *pDisplayName);
-	
-	struct tee_stats *total_stats;
-	char **total_names;
-	int num_totals;
-	int max_totals;
-	
-	int last_reqd;
-	
-	struct tee_stats round_stats[512];
-	char round_names[512][64];
-	int round_index;
-	
 public:
 	IServer *Server() const { return m_pServer; }
 	class IConsole *Console() { return m_pConsole; }
 	CCollision *Collision() { return &m_Collision; }
 	CTuningParams *Tuning() { return &m_Tuning; }
 	void SendFakeTuningParams(int ClientID);
-	void tune_fixed(const char *pParamName, float NewValue, void *pUserData);
-	void tune_freeze (int can_move, void *data);
 
 	CGameContext();
 	~CGameContext();
+	
+	tstats *t_stats;
 
 	void Clear();
-	void update_stats (struct tee_stats *dst, struct tee_stats *src);
-	struct tee_stats *add_round_entry (struct tee_stats st, const char *name);
-	struct tee_stats *find_round_entry (const char *name);
 	CEventHandler m_Events;
 	CPlayer *m_apPlayers[MAX_CLIENTS];
 

@@ -63,9 +63,9 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 			m_Owner);
 
 		int oid = OwnerChar->GetPlayer()->GetCID();
-		struct tee_stats *o = GameServer()->find_round_entry(Server()->
+		struct tee_stats *o = GameServer()->t_stats->find_round_entry(Server()->
 			ClientName(oid));
-		struct tee_stats *v = GameServer()->find_round_entry(Server()->
+		struct tee_stats *v = GameServer()->t_stats->find_round_entry(Server()->
 			ClientName(Hit->GetPlayer()->GetCID()));
 			
 		float da, d = OwnerChar->m_last_travel_dist;

@@ -30,7 +30,7 @@
                                                             __func__,##ARGS)
 #endif
 
-#define ID_ENTRY(i) (GameServer()->find_round_entry(Server()->ClientName(i)))
+#define ID_ENTRY(i) (GameServer()->t_stats->find_round_entry(Server()->ClientName(i)))
 
 CGameControllerOpenFNG::CGameControllerOpenFNG(class CGameContext *pGameServer)
 : IGameController(pGameServer), m_ScoreDisplay(pGameServer), m_Broadcast(pGameServer)

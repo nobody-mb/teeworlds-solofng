@@ -448,7 +448,7 @@ void CCharacter::FireWeapon()
 			if ((time(NULL) - ccreated) <= 1) {
 				printf("spawn shot not counted\n");
 			} else { 
-				struct tee_stats *tmp = GameServer()->find_round_entry(
+				struct tee_stats *tmp = GameServer()->t_stats->find_round_entry(
 					Server()->ClientName(m_pPlayer->GetCID()));
 				if (tmp) 
 					tmp->shots++;
@@ -755,7 +755,7 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 	
 	if (Server()->Tick() > m_ABNextBanTick && m_pPlayer->GetBot(1))
 	{
-		struct tee_stats *tmp = GameServer()->find_round_entry(Server()->
+		struct tee_stats *tmp = GameServer()->t_stats->find_round_entry(Server()->
 			ClientName(m_pPlayer->GetCID()));
 		if (tmp && ++tmp->is_bot < 2) {
 			str_format(aBuf, sizeof(aBuf), "Voting to ban %s.",Server()->
