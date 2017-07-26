@@ -724,7 +724,7 @@ double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_
 {
 	int i, len;
 	double kd = 0, best = 0;
-	char tmp_buf[128] = { 0 };
+	char tmp_buf[256] = { 0 };
 	char call_buf[128] = { 0 };
 	
 	for (i = 0; i < round_index; i++) {
@@ -740,8 +740,8 @@ double CGameContext::print_best_group (char *dst, double (*callback)(struct tee_
 		memset(call_buf, 0, sizeof(call_buf));
 		kd = callback(round_stats[i], call_buf);
 		if (kd == best) {
-			len = strlen(call_buf) + strlen(tmp_buf) + strlen(round_names[i]) + 4;
-			if (len > sizeof(tmp_buf))
+			len = strlen(call_buf) + strlen(tmp_buf) + strlen(round_names[i]) + 5;
+			if (len >= sizeof(tmp_buf))
 				break;
 			strcat(tmp_buf, round_names[i]);
 			if (strlen(call_buf)) {
@@ -784,7 +784,7 @@ void CGameContext::print_best (int max, double (*callback)(struct tee_stats, cha
 
 void CGameContext::send_stats (const char *name, int req_by, struct tee_stats *ct)
 {
-	char buf[128];
+	char buf[256];
 	int c, d;
 	time_t diff;
 	
@@ -905,8 +905,8 @@ double CGameContext::get_steals (struct tee_stats fstats, char *buf)
 {
 	int k = fstats.kills + fstats.kills_x2 + fstats.kills_wrong;
 	if (k && buf)
-		sprintf(buf, "%.02f%% of %d kills", 
-			((double)fstats.steals / (double)k) * 100, k);
+		sprintf(buf, "%.02f%%", 
+			((double)fstats.steals / (double)k) * 100);
 		
 	return (double)fstats.steals;
 }
@@ -934,7 +934,7 @@ double CGameContext::get_accuracy (struct tee_stats fstats, char *buf)
 		return 0.0f;
 		
 	if (buf)
-		sprintf(buf, "avg. ping: %d", fstats.avg_ping);
+		sprintf(buf, "%d ping", fstats.avg_ping);
 		
 	int d = fstats.shots ? fstats.shots : 1;
 	return (double)fstats.freezes / (double)d;
