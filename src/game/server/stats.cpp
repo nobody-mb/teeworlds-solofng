@@ -60,6 +60,8 @@ tstats::tstats (CGameContext *game_srv, const char *stats_dir)
 			}
 		closedir(dp);
 	}
+	
+	printf("**** initialized stats object with %d total\n", num_totals);
 }
 
 tstats::~tstats()
@@ -72,6 +74,8 @@ tstats::~tstats()
 
 	for (int i = 0; i < 512; i++)
 		free(round_names[i]);
+		
+	printf("**** freed stats object with %d total\n", num_totals);
 }
 
 void tstats::on_enter (const char *name)
@@ -91,7 +95,6 @@ void tstats::SendChatTarget(int To, const char *pText)
 {
 	game_server->SendChatTarget(To, pText);
 }
-
 
 void tstats::on_drop (int ClientID, const char *pReason)
 {
@@ -419,6 +422,7 @@ void tstats::on_round_end (void)
 			    strlen(round_names[i])))
 				break;
 		}
+		printf("search for %s found at %d\n", round_names[i], j);
 		if (j == num_totals) {
 			//++num_totals;
 			total_stats[j] = read_statsfile(round_names[i], time(NULL));
@@ -448,9 +452,10 @@ void tstats::on_round_end (void)
 	for (i = 0; i < MAX_CLIENTS; i++) {
 		memset(&totals, 0, sizeof(totals));
 		totals.join_time = time(NULL);
-		if (!m_apPlayers[i])
+		if (!game_server->m_apPlayers[i])
 			continue;
-		add_round_entry(totals, ID_NAME(m_apPlayers[i]->GetCID()));
+		add_round_entry(totals, ID_NAME(game_server->m_apPlayers[i]->GetCID()));
+		printf("re-added player %s\n", ID_NAME(game_server->m_apPlayers[i]->GetCID()));
 	}
 }
 
@@ -492,7 +497,7 @@ void tstats::on_msg (const char *message, int ClientID)
 {
 	printf("[cmd msg] %s: %s\n", ID_NAME(ClientID), message);
 	
-	if (str_comp_num(message, "/statsall", 9) == 0) {
+	if (strncmp(message, "/statsall", 9) == 0) {
 		if (strlen(message) > 10) {
 			char namebuf[64] = { 0 };
 			strcpy(namebuf, message + 10);
@@ -513,7 +518,7 @@ void tstats::on_msg (const char *message, int ClientID)
 			tmp = read_statsfile(ID_NAME(ClientID), 0);
 			send_stats(ID_NAME(ClientID), ClientID, &tmp);
 		}
-	} else if (str_comp_num(message, "/stats", 6) == 0) {
+	} else if (strncmp(message, "/stats", 6) == 0) {
 		if (strlen(message) > 7) {
 			char namebuf[64] = { 0 };
 			strcpy(namebuf, message + 7);
@@ -534,15 +539,15 @@ void tstats::on_msg (const char *message, int ClientID)
 			if (tmp)
 				send_stats(ID_NAME(ClientID), ClientID, tmp);
 		}
-	} else if (str_comp_num(message, "/topkills", 9) == 0) {
+	} else if (strncmp(message, "/topkills", 9) == 0) {
 		SendChat(-1, CGameContext::CHAT_ALL, "most kills:");
 		print_best(12, &get_kills, 1);
-	} else if (str_comp_num(message, "/topsteals", 9) == 0) {
+	} else if (strncmp(message, "/topsteals", 9) == 0) {
 		SendChat(-1, CGameContext::CHAT_ALL, "most steals:");
 		print_best(12, &get_steals, 1);
-	} else if (str_comp_num(message, "/top", 4) == 0) { 
+	} else if (strncmp(message, "/top", 4) == 0) { 
 		int all = 0;
-		if (str_comp_num(message, "/topall", 7) == 0) {
+		if (strncmp(message, "/topall", 7) == 0) {
 			char mg[128] = { 0 };
 			snprintf(mg, sizeof(mg), "all-time stats req by %s", 
 			Server()->ClientName(ClientID));

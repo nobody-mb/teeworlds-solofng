@@ -627,6 +627,8 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 void CGameContext::on_round_end (void)
 {
 	t_stats->on_round_end();
+	///delete t_stats;
+	//t_stats = new tstats(this, STATS_DIR);
 }
 
 void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
