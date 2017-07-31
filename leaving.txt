@@ -1,1 +1,2 @@
 SP | Someone left ( client: onbyClientV3) 31.77.155.53
+(connecting) left (Too weak connection (not acked for 10 seconds)) 

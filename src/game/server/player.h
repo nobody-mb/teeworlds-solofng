@@ -11,7 +11,7 @@
 #define ID_NAME(id) (Server()->ClientName(id))
 #define PLAYER_NUM(i) (GameServer()->m_apPlayers[i])
 
-#define STATS_DIR "stats"
+#define STATS_DIR "/Users/nobody1/stats"
 #ifndef TEE_STATS
 #define TEE_STATS
 struct tee_stats {
